@@ -8,9 +8,9 @@
 ;*
 ;* Date created      : 11/12/2018
 ;*
-;* Version			 : Internal
+;* Version           : Internal
 ;*
-;* Copyright   		 : GNU GENERAL PUBLIC LICENSE Version 3
+;* Copyright         : GNU GENERAL PUBLIC LICENSE Version 3
 ;*
 ;* Purpose           : Hello World in C, Ansi-style
 ;*

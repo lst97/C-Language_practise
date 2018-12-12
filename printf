@@ -1,0 +1,52 @@
+/*
+;|**********************************************************************;
+;* Project           : Basic_C
+;*
+;* Program name      : sizeof__unsigned.c
+;*
+;* Author            : SIO TOU LAI (laisiotou1997@gmail.com)
+;*
+;* Date created      : 12/12/2018
+;*
+;* Version			 : Internal
+;*
+;* Copyright   		 : GNU GENERAL PUBLIC LICENSE Version 3
+;*
+;* Purpose           : Introduce 'sizeof()', signed, unsigned. Ansi-style
+;*
+;* Revision History  :
+;*
+;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
+;* 12122018    lst97       1      First release
+;*
+;* Known Issue       :
+;*
+;* N/A
+;|**********************************************************************;
+*/
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+	short int numA = 0xFFFF;
+	short int numB = 65536;			//overflow = 1 00000000 00000000b
+	printf("'numA'\t= %d\n", numA);
+	printf("'numB'\t= %d %o %x %d %#o %#x %ld %lo %lx %hd %#ho %#hx %d %o %x %d %#o %#x \n", numB);		//Missing argument, it will read stuffs from memory.
+
+	printf("\n* * * printf() Format * * *\n");
+	printf("\n%%d\t\t= Decimo\n%%o\t\t= Octal\n%%x\t\t= Hex\n");
+	printf("\n%%#o\t\t= Format display Octal\t%#o\n%%#h\t\t= Format display Hex\t%#x",numA, numA);
+
+	printf("\n\n%%ld %%lo %%lx\t= Display long\n");
+	printf("%%hd %%ho %%hx\t= Display short\n");
+
+	printf("\n%%u\t\t= Display unsigned\n");
+
+	getchar();
+	return EXIT_SUCCESS;
+}
+
+/*
+
+
+*/

@@ -34,10 +34,12 @@
 #define DAY 7
 #define WEEK 4
 #define MOUNTH 12
+#define TRUE 1
+#define FALSE 0
 
 int pCOMMAND(void);
-void pDEBUG(_Bool torf);
-int pEND(_Bool torf);
+int pDEBUG(void);
+int pEND(void);
 
 _Bool debugSwitch = 1;
 int main(void) {
@@ -51,6 +53,8 @@ int main(void) {
 
 	printf("%u Day = %u Year / %u Weeks + %u Days", userInput, userInput_temp / (DAY * WEEK * MOUNTH), userInput_temp / DAY, userInput_temp % DAY);
 	if(debugSwitch == 1){printf("\t*DEBUG[userInput]= '%X'\t[userInput_temp]= '%X'\t", userInput, userInput_temp);}
+
+	printf("\n\nEnter q to exit\n");
 	pCOMMAND();
 	return 0;
 }
@@ -58,33 +62,37 @@ int main(void) {
 int pCOMMAND(void){
 	const unsigned short int arrayNum = 2;
 		char userCommand[arrayNum];
-		printf("\n\nEnter q to exit\n");
-		while(userCommand[0] != 'q' || userCommand[0] != 'd'){
+
+		while(TRUE){
 			scanf("%s", userCommand);
-			if(strlen(userCommand) != 1){
-				printf("%s: Command not found!\n", userCommand);
-				userCommand[0] = SPACEBAR;
-			}else if(userCommand[0] == 'd'){
-				if(debugSwitch == 1){
-					pDEBUG(0);
-				}else{
-					pDEBUG(1);
+			if(strlen(userCommand) == 1){
+				if(userCommand[0] == 'd'){
+					pDEBUG();
+					userCommand[0] = SPACEBAR;
+					pCOMMAND();
+				}else if (userCommand[0] == 'q'){
+					pEND();
 				}
-			}else{
-				pEND(1);
 			}
+			printf("%s: Command not found!\n", userCommand);
+			userCommand[0] = SPACEBAR;
 		}
 		return 0;
 }
 
-void pDEBUG(_Bool torf){
-	debugSwitch = torf;
+int pDEBUG(void){
+	if(debugSwitch == TRUE){
+		debugSwitch = FALSE;
+	}else{
+		debugSwitch = TRUE;
+	}
 	printf("Debug Mode = %u\n", debugSwitch);
+	return 0;
 }
 
-int pEND(_Bool torf){
+int pEND(void){
 	printf("Program terminated normally\n");
-	return 0;
+	exit(0);
 }
 /*RESULT
 Please enter a day [0 ~ 65535]

@@ -18,7 +18,7 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 13122018    lst97       1      First release
-;*
+;* 13122018    lst97       2      Fix pDEBUG() function bug
 ;* Known Issue       :
 ;*
 ;* 1.COMMAND mode problem scanf() 2.No error handling when user input non-integer type.

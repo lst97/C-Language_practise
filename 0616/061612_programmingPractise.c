@@ -18,10 +18,10 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 14122018    lst97       1      First release
-;*
+;* 15122018    lst97       2      Add more function add, sub, mul, div
 ;* Known Issue       :
 ;*
-;* 1.Only calculate add for now.
+;* 1.Only calculate one type each time for now.
 ;|**********************************************************************;
 */
 #include <stdio.h>
@@ -41,47 +41,86 @@ int pDEBUG(void);
 _Bool pEND(void);
 
 double pAdd(double numA, double numB);
-/*
+
 double pSub(double numA, double numB);
 double pMul(double numA, double numB);
 double pDiv(double numA, double numB);
-*/
+
 _Bool debugSwitch = FALSE;
 int main(void) {
 	float numLimited;
-	float userInput_int[2];
+	float userInput_float[2];
 	char userInput_express;
-	double answer_temp;
 
+	double answer_tempMul;
+	double answer_temp;
 	_Bool loopSwitch = TRUE;
 
 	printf("Please enter formula to calculate [%.0f ~ %.0f]\n", (float)(-pow(BINARY, (sizeof numLimited * BIT)))/2, (float)(pow(BINARY, (sizeof numLimited * BIT))/2));
 
-	scanf("%f%c%f", &userInput_int[0], &userInput_express, &userInput_int[1]);
+	scanf("%f%c", &userInput_float[0], &userInput_express);
 
 
-	if(debugSwitch == 1)printf("\t[*]DEBUG\t(userInput_int[0])= '%f' (userInput_express)= '%c' (userInput_int[1]= '%f')",
-	userInput_int[0], userInput_express, userInput_int[1]);
+		if(debugSwitch == 1)printf("\t[*]DEBUG\t(userInput_float[0])= '%f' (userInput_express)= '%c')", userInput_float[0], userInput_express);
 
-
-	//Classification
-	if (userInput_express == 0x2B){
-	answer_temp = (double)pAdd(userInput_int[0],userInput_int[1]);
+		char nextExpress;
+		//Classification
 		do{
-			//Follow-Up
-			char nextExpress;
-			nextExpress = getchar();
-			if (nextExpress == 0x000A){
-				printf("%lf", answer_temp);
-				loopSwitch = FALSE;
-			}else{
-				userInput_express = nextExpress;
-				scanf("%f", &userInput_int[0]);
-				answer_temp = (unsigned int)pAdd(answer_temp, userInput_int[0]);
+			if (userInput_express == 0x002B || userInput_express == 0x002D){
+				scanf("%f", &userInput_float[1]);
+				nextExpress = getchar();
+				if (nextExpress == 0x000A && userInput_express == 0x002B){
+					userInput_float[0] = (double)pAdd(userInput_float[0], userInput_float[1]);
+					printf("%lf", userInput_float[0]);
+					goto lpEND;
+				}else if(nextExpress == 0x000A && userInput_express == 0x002D){
+					userInput_float[0] = (double)pSub(userInput_float[0], userInput_float[1]);
+					printf("%lf", userInput_float[0]);
+					goto lpEND;
+				}
+				if(nextExpress == 0x002B || nextExpress == 0x002D){
+					switch (userInput_express){
+						case 0x002B:
+							userInput_float[0] = (double)pAdd(userInput_float[0], userInput_float[1]);
+							userInput_express = nextExpress;
+						break;
+						case 0x002D:
+							userInput_float[0] = (double)pSub(userInput_float[0], userInput_float[1]);
+							break;
+					}
+				}else{
+					answer_tempMul = userInput_float[1];
+					userInput_express = nextExpress;
+				}
 			}
-		}while(loopSwitch);
-	}
 
+			if (userInput_express == 0x002A || userInput_express == 0x002F){
+				scanf("%f", &userInput_float[1]);
+				nextExpress = getchar();
+
+				if (nextExpress == 0x000A && userInput_express == 0x002A){
+					userInput_float[0] = (double)pMul(userInput_float[0], userInput_float[1]);
+					printf("%lf", userInput_float[0]);
+					goto lpEND;
+				}else if(nextExpress == 0x000A && userInput_express == 0x002F){
+					userInput_float[0] = (double)pDiv(userInput_float[0], userInput_float[1]);
+					printf("%lf", userInput_float[0]);
+					goto lpEND;
+				}
+				switch (userInput_express){
+					case 0x002A:
+						userInput_float[0] = (double)pMul(userInput_float[0], userInput_float[1]);
+						userInput_express = nextExpress;
+						break;
+					case 0x002F:
+						userInput_float[0] = (double)pDiv(userInput_float[0], userInput_float[1]);
+						userInput_express = nextExpress;
+						break;
+				}
+			}
+
+		}while(loopSwitch);
+lpEND:
 	printf("\n\nEnter q to exit\n");
 	pCOMMAND();
 	printf("Program terminated normally\n");
@@ -94,7 +133,7 @@ double pAdd(double numA, double numB){
 
 	return answer;
 }
-/*
+
 double pSub(double numA, double numB){
 	double answer;
 	answer = numA - numB;
@@ -112,7 +151,7 @@ double pDiv(double numA, double numB){
 	answer = numA / numB;
 	return answer;
 }
-*/
+
 
 int pCOMMAND(void){
 	const unsigned short int arrayNum = 1;
@@ -153,13 +192,11 @@ _Bool pEND(void){
 	return 0;
 }
 /*RESULT
-Please enter a day [0 ~ 65535]
-8192
-8192 Day = 24 Year / 1170 Weeks + 2 Days	*DEBUG[userInput]= '2000'	[userInput_temp]= '2000'
+Please enter formula to calculate [-2147483648 ~ 2147483648]
+1+23+3
+27.000000
 
 Enter q to exit
-d
-Debug Mode = 0
 q
 Program terminated normally
 

@@ -6,7 +6,7 @@
 ;*
 ;* Author            : SIO TOU LAI (laisiotou1997@gmail.com)
 ;*
-;* Date created      : 16/12/2018
+;* Date created      : 14/12/2018
 ;*
 ;* Version           : Internal
 ;*
@@ -20,10 +20,11 @@
 ;* 14122018    lst97       1      First release
 ;* 15122018    lst97       2      Add more function
 ;* 16122018    lst97       3      Recode
+;* 17122018    lst97       4      Recoding, can solve basic math problem between two number
 ;*
 ;* Known Issue       :
 ;*
-;* 1.I discovered I have running into a stupid way for doing this calculator, These kind of code will not be continue and I found a new way to deal with +- after /* problem. 
+;* 1. As my skill not good at the moment, I don't want to spend too much time on this program, I will finish it after my skill grows up.
 ;|**********************************************************************;
 */
 #include <stdio.h>
@@ -43,7 +44,6 @@ int pDEBUG(void);
 _Bool pEND(void);
 
 double pAdd(double numA, double numB);
-
 double pSub(double numA, double numB);
 double pMul(double numA, double numB);
 double pDiv(double numA, double numB);
@@ -52,151 +52,217 @@ _Bool debugSwitch = FALSE;
 int main(void) {
 	float numLimited;
 	float userInput_float[2];
-	float userInput_floatLowPio[64];
-	unsigned short int userInput_floatLowPio_Counter;
+	double userInput_floatList[64];
+	unsigned short int userInput_floatList_Counter = 0;
 	char userInput_express;
 
-	double answer_tempFront;
 	double answer_temp;
-	double answer_tempMul;
 	_Bool loopSwitch = TRUE;
 	_Bool loopSwitch_continMul = TRUE;
+	_Bool loopSwitch_continAdd = TRUE;
+	_Bool differentFound = FALSE;
 	printf("Please enter formula to calculate [%.0f ~ %.0f]\n", (float)(-pow(BINARY, (sizeof numLimited * BIT)))/2, (float)(pow(BINARY, (sizeof numLimited * BIT))/2));
 
 
 
-		if(debugSwitch == 1)printf("\t[*]DEBUG\t(userInput_float[0])= '%f' (userInput_express)= '%c')", userInput_float[0], userInput_express);
+	if(debugSwitch == 1)printf("\t[*]DEBUG\t(userInput_float[0])= '%f' (userInput_express)= '%c')", userInput_float[0], userInput_express);
+	char nextExpress;
 
-		char nextExpress;
-		float nextFolat;
-		//Classification
-		scanf("%f%c%f", &userInput_float[0], &userInput_express, &userInput_float[1]);
+
+	//Classification
+	while(loopSwitch){
+		userInput_express = nextExpress;
+
+		scanf("%f", &userInput_float[1]);
 		nextExpress = getchar();
 
-		if(userInput_express == 0x002A || userInput_express == 0x002F){
-			if(userInput_express == 0x002A){
-				answer_tempFront = (double)pMul(userInput_float[0], userInput_float[1]);
-			}
-
-			if(userInput_express == 0x002F){
-				answer_tempFront = (double)pDiv(userInput_float[0], userInput_float[1]);
-			}
-		}else if(nextExpress == 0x002A || nextExpress == 0x002F){
-			userInput_floatLowPio[1] = userInput_float[0];
-			userInput_floatLowPio_Counter++;
-			answer_tempMul = userInput_float[1];
-
-		}else if(nextExpress == 0x002B || nextExpress == 0x002D){
-
-			if(userInput_express == 0x002B){
-				answer_tempFront = (double)pAdd(userInput_float[0], userInput_float[1]);
-			}
-
-			if(userInput_express == 0x002D){
-				answer_tempFront = (double)pSub(userInput_float[0], userInput_float[1]);
-			}
-		}
-
-		if(nextExpress == 0x000A){
+		if(nextExpress == 0x000A && answer_temp == 0){
 			if(userInput_express == 0x002B){
 				answer_temp = (double)pAdd(userInput_float[0], userInput_float[1]);
-				printf("%lf", answer_temp);
-				loopSwitch = FALSE;
 			}
 			if(userInput_express == 0x002D){
 				answer_temp = (double)pSub(userInput_float[0], userInput_float[1]);
-				printf("%lf", answer_temp);
-				loopSwitch = FALSE;
 			}
 			if(userInput_express == 0x002A){
 				answer_temp = (double)pMul(userInput_float[0], userInput_float[1]);
-				printf("%lf", answer_temp);
-				loopSwitch = FALSE;
 			}
 			if(userInput_express == 0x002F){
 				answer_temp = (double)pDiv(userInput_float[0], userInput_float[1]);
-				printf("%lf", answer_temp);
-				loopSwitch = FALSE;
 			}
+			userInput_floatList[userInput_floatList_Counter] = answer_temp;
+			userInput_floatList_Counter++;
+			goto result;
 		}
-		userInput_express = nextExpress;
 
-		while(loopSwitch){
-			scanf("%f", &userInput_float[0]);
-			nextExpress = getchar();
-			if(nextExpress == 0x000A){
+		if(nextExpress == 0x000A){
+			if(userInput_express == 0x002D){
+				answer_temp = -userInput_float[1];
+				userInput_floatList[userInput_floatList_Counter] = answer_temp;
+				userInput_floatList_Counter++;
+				goto result;
+			}
+			answer_temp = userInput_float[1];
+			userInput_floatList[userInput_floatList_Counter] = answer_temp;
+			userInput_floatList_Counter++;
+			goto result;
+		}
+
+		//loopSwitch_continAdd?
+		if((userInput_express == 0x002B || userInput_express == 0x002D) && (nextExpress == 0x002B || nextExpress == 0x002D)){
+			loopSwitch_continAdd = TRUE;
+			if(differentFound == FALSE){
+				answer_temp = userInput_float[0];
 				if(userInput_express == 0x002B){
-					answer_temp = (double)pAdd(answer_tempFront, userInput_float[0]);
-					printf("%lf", answer_temp);
-					loopSwitch = FALSE;
-					continue;
+					answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
 				}
 				if(userInput_express == 0x002D){
-					answer_temp = (double)pSub(answer_tempFront, userInput_float[0]);
-					printf("%lf", answer_temp);
-					loopSwitch = FALSE;
-					continue;
+					answer_temp = (double)pSub(answer_temp, userInput_float[1]);
 				}
-				if(userInput_express == 0x002A){
-					answer_temp = userInput_floatLowPio[userInput_floatLowPio_Counter] + (double)pMul(answer_tempMul, userInput_float[0]);
-					printf("%lf", answer_temp);
-					loopSwitch = FALSE;
-					continue;
+			}else{
+				answer_temp = 0;
+				if(userInput_express == 0x002B){
+					answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
 				}
-				if(userInput_express == 0x002F){
-					answer_temp = userInput_floatLowPio[userInput_floatLowPio_Counter] + (double)pDiv(answer_tempMul, userInput_float[0]);
-					printf("%lf", answer_temp);
-					loopSwitch = FALSE;
-					continue;
+				if(userInput_express == 0x002D){
+					answer_temp = (double)pSub(answer_temp, userInput_float[1]);
 				}
 			}
 
-			if(userInput_express == 0x002A){
-				answer_tempFront = (double)pMul(answer_tempMul, userInput_float[0]);
-			}
-			if(userInput_express == 0x002F){
-				answer_tempFront = (double)pDiv(answer_tempMul, userInput_float[0]);
-			}
-			if(nextExpress == 0x002A){
-				while(loopSwitch_continMul){
-					scanf("%f", &userInput_float[1]);
-					answer_tempFront = (double)pMul(answer_tempFront, userInput_float[1]);
-					nextExpress = getchar();
-					if(nextExpress == 0x000A){
-						loopSwitch_continMul = FALSE;
+
+			while(loopSwitch_continAdd){
+				userInput_express = nextExpress;
+				scanf("%f", &userInput_float[1]);
+				nextExpress = getchar();
+				if(nextExpress == 0x002B || nextExpress == 0x002D){
+					if(userInput_express == 0x002B){
+						answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
+					}
+					if(userInput_express == 0x002D){
+						answer_temp = (double)pSub(answer_temp, userInput_float[1]);
 					}
 				}
-			}
 
-			userInput_express = nextExpress;
+				if(nextExpress == 0x002A || nextExpress == 0x002F){
+					userInput_floatList[userInput_floatList_Counter] = answer_temp;
+					userInput_floatList_Counter++;
+					loopSwitch_continAdd = FALSE;
 
-			scanf("%f", &userInput_float[1]);
-			nextExpress = getchar();
-			if(nextExpress == 0x000A){
-				if(userInput_express == 0x0002B){
-					answer_temp = answer_tempFront + (double)pAdd(userInput_float[0], userInput_float[1]);
-					printf("%lf", answer_temp);
-					loopSwitch = FALSE;
-					continue;
+					userInput_float[0] = userInput_float[1];
 				}
-				if(userInput_express == 0x0002D){
-					answer_temp = answer_tempFront + (double)pSub(userInput_float[0], userInput_float[1]);
-					printf("%lf", answer_temp);
-					loopSwitch = FALSE;
-					continue;
-				}
-			}
-			if(nextExpress == 0x002B || nextExpress == 0x002D){
-				if(nextExpress == 0x002B){
-					answer_tempFront = answer_tempFront + (double)pAdd(userInput_float[0], userInput_float[1]);
-
-				}
-				if(nextExpress == 0x002D){
-					answer_tempFront = answer_tempFront + (double)pSub(userInput_float[0], userInput_float[1]);
-
+				if(nextExpress == 0x000A){
+					if(userInput_express == 0x002B){
+						answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
+					}
+					if(userInput_express == 0x002D){
+						answer_temp = (double)pSub(answer_temp, userInput_float[1]);
+					}
+					userInput_floatList[userInput_floatList_Counter] = answer_temp;
+					userInput_floatList_Counter++;
+					goto result;
 				}
 			}
 		}
+
+		//continueMul?
+		if((userInput_express == 0x002A || userInput_express == 0x002F) && (nextExpress == 0x002A || nextExpress == 0x002F)){
+			loopSwitch_continMul = TRUE;
+			if(differentFound == FALSE){
+				answer_temp = userInput_float[0];
+				if(userInput_express == 0x002A){
+					answer_temp = (double)pMul(answer_temp, userInput_float[1]);
+				}
+				if(userInput_express == 0x002F){
+					answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
+				}
+			}else{
+				answer_temp = 0;
+				if(userInput_express == 0x002A){
+					answer_temp = (double)pMul(answer_temp, userInput_float[1]);
+				}
+				if(userInput_express == 0x002F){
+					answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
+				}
+			}
+
+			while(loopSwitch_continMul){
+				userInput_express = nextExpress;
+				scanf("%f", &userInput_float[1]);
+				nextExpress = getchar();
+				if(nextExpress == 0x002A || nextExpress == 0x002F){
+					if(userInput_express == 0x002A){
+						answer_temp = (double)pMul(answer_temp, userInput_float[1]);
+					}
+					if(userInput_express == 0x002F){
+						answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
+					}
+				}
+
+				if(nextExpress == 0x002B || nextExpress == 0x002D){
+					if(userInput_express == 0x002A){
+						answer_temp = (double)pMul(answer_temp, userInput_float[1]);
+					}
+					if(userInput_express == 0x002F){
+						answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
+					}
+					userInput_floatList[userInput_floatList_Counter] = answer_temp;
+					userInput_floatList_Counter++;
+					loopSwitch_continMul = FALSE;
+					userInput_float[0] = userInput_float[1];
+				}
+
+				if(nextExpress == 0x000A){
+					if(userInput_express == 0x002A){
+						answer_temp = (double)pMul(answer_temp, userInput_float[1]);
+					}
+					if(userInput_express == 0x002F){
+						answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
+					}
+					userInput_floatList[userInput_floatList_Counter] = answer_temp;
+					userInput_floatList_Counter++;
+					goto result;
+				}
+			}
+		}
+		//Different FOUND!!
+		if((userInput_express == 0x002A || userInput_express == 0x002F) && (nextExpress == 0x002B || nextExpress == 0x002D)){
+			if(userInput_express == 0x002A){
+				answer_temp = (double)pMul(userInput_float[0], userInput_float[1]);
+				userInput_floatList[userInput_floatList_Counter] = answer_temp;
+				userInput_floatList_Counter++;
+
+			}
+			if(userInput_express == 0x002F){
+				answer_temp = (double)pDiv(userInput_float[0], userInput_float[1]);
+				userInput_floatList[userInput_floatList_Counter] = answer_temp;
+				userInput_floatList_Counter++;
+
+			}
+		}
+		if((userInput_express == 0x002B || userInput_express == 0x002D) && (nextExpress == 0x002A || nextExpress == 0x002F)){
+			if(userInput_express == 0x002B){
+				answer_temp = (double)pAdd(userInput_float[0], userInput_float[1]);
+				userInput_floatList[userInput_floatList_Counter] = answer_temp;
+				userInput_floatList_Counter++;
+
+			}
+			if(userInput_express == 0x002D){
+				answer_temp = (double)pSub(userInput_float[0], userInput_float[1]);
+				userInput_floatList[userInput_floatList_Counter] = answer_temp;
+				userInput_floatList_Counter++;
+
+			}
+		}
+
+		userInput_float[0] = userInput_float[1];
+	}
+
+result:
+	answer_temp = 0;
+	do{
+		answer_temp = answer_temp + userInput_floatList[userInput_floatList_Counter];
+	}while(userInput_floatList_Counter--);
+	printf("%lf!!!!", answer_temp);
+
 
 	printf("\n\nEnter q to exit\n");
 	pCOMMAND();

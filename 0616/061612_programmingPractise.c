@@ -21,286 +21,253 @@
 ;* 15122018    lst97       2      Add more function
 ;* 16122018    lst97       3      Recode
 ;* 17122018    lst97       4      Recoding, can solve basic math problem between two number
+;* 19122018    lst97       5      Totally rewrote, program now working properly in add, sub, mul, div. I will add more function later soon, see Known Issue
 ;*
 ;* Known Issue       :
 ;*
-;* 1. As my skill not good at the moment, I don't want to spend too much time on this program, I will finish it after my skill grows up.
+;* 1. No function for validating users' input. Will add soon (planed: 21/12/2018)
+;* 2. Integrated with command line, so it will not calculate one time only. Will add soon. (planed: 21/12/2018)
 ;|**********************************************************************;
 */
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
 #define TRUE 1
 #define FALSE 0
+#define NULL 0
+#define NEGATIVE -1
 #define SPACEBAR 0x20
-#define BINARY 2
-
-#define BIT 8
-
 
 int pCOMMAND(void);
 int pDEBUG(void);
 _Bool pEND(void);
+//ASCII: +2Bh -2Dh *2Ah /2Fh
 
-double pAdd(double numA, double numB);
-double pSub(double numA, double numB);
-double pMul(double numA, double numB);
-double pDiv(double numA, double numB);
+double keepAddSub(float, char, float, char);
+double keepMulDiv(float, char, float, char);
+double inputFinish(unsigned short int);
 
 _Bool debugSwitch = FALSE;
+
+_Bool inputFinishFlag = FALSE;
+char diffSymbol = NULL;
+
+double answerTempArray[64];
+float userInputNum[2] = {NULL, NULL};
+char userInputSymbol[2]= {NULL, NULL};
+
 int main(void) {
-	float numLimited;
-	float userInput_float[2];
-	double userInput_floatList[64];
-	unsigned short int userInput_floatList_Counter = 0;
-	char userInput_express;
-
-	double answer_temp;
+	double answerTemp = NULL;
+	unsigned short int answerTempArray_Counter = NULL;
 	_Bool loopSwitch = TRUE;
-	_Bool loopSwitch_continMul = TRUE;
-	_Bool loopSwitch_continAdd = TRUE;
-	_Bool differentFound = FALSE;
-	printf("Please enter formula to calculate [%.0f ~ %.0f]\n", (float)(-pow(BINARY, (sizeof numLimited * BIT)))/2, (float)(pow(BINARY, (sizeof numLimited * BIT))/2));
 
-
-
-	if(debugSwitch == 1)printf("\t[*]DEBUG\t(userInput_float[0])= '%f' (userInput_express)= '%c')", userInput_float[0], userInput_express);
-	char nextExpress;
-
-
-	//Classification
 	while(loopSwitch){
-		userInput_express = nextExpress;
+		scanf("%f", &userInputNum[1]);
+		if(diffSymbol == 0x002D){				//diffSymbol used for set negative integer
+			userInputNum[1] *= -1;
+		}
+		userInputSymbol[1] = getchar();
 
-		scanf("%f", &userInput_float[1]);
-		nextExpress = getchar();
 
-		if(nextExpress == 0x000A && answer_temp == 0){
-			if(userInput_express == 0x002B){
-				answer_temp = (double)pAdd(userInput_float[0], userInput_float[1]);
+		if(userInputSymbol[1] == 0x000A){
+			//Only have one integer after symbol change
+			if(userInputNum[0] == NULL && userInputSymbol[0] == NULL){
+				answerTempArray[answerTempArray_Counter] = userInputNum[1];
 			}
-			if(userInput_express == 0x002D){
-				answer_temp = (double)pSub(userInput_float[0], userInput_float[1]);
+			//Only have two integer after symbol change
+			switch(userInputSymbol[0]){
+				case 0x002B: answerTempArray[answerTempArray_Counter] = userInputNum[0] + userInputNum[1]; break;
+				case 0x002D: answerTempArray[answerTempArray_Counter] = userInputNum[0] - userInputNum[1]; break;
+				case 0x002A: answerTempArray[answerTempArray_Counter] = userInputNum[0] * userInputNum[1]; break;
+				case 0x002F: answerTempArray[answerTempArray_Counter] = userInputNum[0] / userInputNum[1];
 			}
-			if(userInput_express == 0x002A){
-				answer_temp = (double)pMul(userInput_float[0], userInput_float[1]);
-			}
-			if(userInput_express == 0x002F){
-				answer_temp = (double)pDiv(userInput_float[0], userInput_float[1]);
-			}
-			userInput_floatList[userInput_floatList_Counter] = answer_temp;
-			userInput_floatList_Counter++;
-			goto result;
+		answerTempArray_Counter++;
+		answerTemp = inputFinish(answerTempArray_Counter);
+		loopSwitch = FALSE;
+		continue;
 		}
 
-		if(nextExpress == 0x000A){
-			if(userInput_express == 0x002D){
-				answer_temp = -userInput_float[1];
-				userInput_floatList[userInput_floatList_Counter] = answer_temp;
-				userInput_floatList_Counter++;
-				goto result;
+		diffSymbol = NULL;
+		//Function Call keepAddSub(): Check if it is more than 3 integer ADD or SUB together.
+		if((userInputSymbol[0] == 0x002B || userInputSymbol[0] == 0x002D) && (userInputSymbol[1] == 0x002B || userInputSymbol[1] == 0x002D)){
+			answerTempArray[answerTempArray_Counter] = keepAddSub(userInputNum[0], userInputSymbol[0], userInputNum[1], userInputSymbol[1]);
+			answerTempArray_Counter++;
+			if(inputFinishFlag == TRUE){
+				answerTemp = inputFinish(answerTempArray_Counter);
+				loopSwitch = FALSE;
+				continue;
 			}
-			answer_temp = userInput_float[1];
-			userInput_floatList[userInput_floatList_Counter] = answer_temp;
-			userInput_floatList_Counter++;
-			goto result;
+			continue;
 		}
 
-		//loopSwitch_continAdd?
-		if((userInput_express == 0x002B || userInput_express == 0x002D) && (nextExpress == 0x002B || nextExpress == 0x002D)){
-			loopSwitch_continAdd = TRUE;
-			if(differentFound == FALSE){
-				answer_temp = userInput_float[0];
-				if(userInput_express == 0x002B){
-					answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
-				}
-				if(userInput_express == 0x002D){
-					answer_temp = (double)pSub(answer_temp, userInput_float[1]);
-				}
-			}else{
-				answer_temp = 0;
-				if(userInput_express == 0x002B){
-					answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
-				}
-				if(userInput_express == 0x002D){
-					answer_temp = (double)pSub(answer_temp, userInput_float[1]);
-				}
+		//Function Call keepMulDiv(): Check if it is more than 3 integer MUL or DIV together.
+		if((userInputSymbol[0] == 0x002A || userInputSymbol[0] == 0x002F) && (userInputSymbol[1] == 0x002A || userInputSymbol[1] == 0x002F)){
+			answerTempArray[answerTempArray_Counter] = keepMulDiv(userInputNum[0], userInputSymbol[0], userInputNum[1], userInputSymbol[1]);
+			answerTempArray_Counter++;
+			if(inputFinishFlag == TRUE){
+				answerTemp = inputFinish(answerTempArray_Counter);
+				loopSwitch = FALSE;
+				continue;
 			}
-
-
-			while(loopSwitch_continAdd){
-				userInput_express = nextExpress;
-				scanf("%f", &userInput_float[1]);
-				nextExpress = getchar();
-				if(nextExpress == 0x002B || nextExpress == 0x002D){
-					if(userInput_express == 0x002B){
-						answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
-					}
-					if(userInput_express == 0x002D){
-						answer_temp = (double)pSub(answer_temp, userInput_float[1]);
-					}
-				}
-
-				if(nextExpress == 0x002A || nextExpress == 0x002F){
-					userInput_floatList[userInput_floatList_Counter] = answer_temp;
-					userInput_floatList_Counter++;
-					loopSwitch_continAdd = FALSE;
-
-					userInput_float[0] = userInput_float[1];
-				}
-				if(nextExpress == 0x000A){
-					if(userInput_express == 0x002B){
-						answer_temp = (double)pAdd(answer_temp, userInput_float[1]);
-					}
-					if(userInput_express == 0x002D){
-						answer_temp = (double)pSub(answer_temp, userInput_float[1]);
-					}
-					userInput_floatList[userInput_floatList_Counter] = answer_temp;
-					userInput_floatList_Counter++;
-					goto result;
-				}
-			}
+			continue;
 		}
 
-		//continueMul?
-		if((userInput_express == 0x002A || userInput_express == 0x002F) && (nextExpress == 0x002A || nextExpress == 0x002F)){
-			loopSwitch_continMul = TRUE;
-			if(differentFound == FALSE){
-				answer_temp = userInput_float[0];
-				if(userInput_express == 0x002A){
-					answer_temp = (double)pMul(answer_temp, userInput_float[1]);
-				}
-				if(userInput_express == 0x002F){
-					answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
-				}
-			}else{
-				answer_temp = 0;
-				if(userInput_express == 0x002A){
-					answer_temp = (double)pMul(answer_temp, userInput_float[1]);
-				}
-				if(userInput_express == 0x002F){
-					answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
-				}
+		//Check if it is more than last symbol different with the next symbol. (E.G 1*2+1 or 1+2*1)
+		if((userInputSymbol[0] == 0x002A || userInputSymbol[0] == 0x002F) && (userInputSymbol[1] == 0x002B || userInputSymbol[1] == 0x002D)){
+			switch(userInputSymbol[0]){
+			case 0x002A: answerTempArray[answerTempArray_Counter] = userInputNum[0] * userInputNum[1]; break;
+			case 0x002F: answerTempArray[answerTempArray_Counter] = userInputNum[0] / userInputNum[1];
 			}
-
-			while(loopSwitch_continMul){
-				userInput_express = nextExpress;
-				scanf("%f", &userInput_float[1]);
-				nextExpress = getchar();
-				if(nextExpress == 0x002A || nextExpress == 0x002F){
-					if(userInput_express == 0x002A){
-						answer_temp = (double)pMul(answer_temp, userInput_float[1]);
-					}
-					if(userInput_express == 0x002F){
-						answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
-					}
-				}
-
-				if(nextExpress == 0x002B || nextExpress == 0x002D){
-					if(userInput_express == 0x002A){
-						answer_temp = (double)pMul(answer_temp, userInput_float[1]);
-					}
-					if(userInput_express == 0x002F){
-						answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
-					}
-					userInput_floatList[userInput_floatList_Counter] = answer_temp;
-					userInput_floatList_Counter++;
-					loopSwitch_continMul = FALSE;
-					userInput_float[0] = userInput_float[1];
-				}
-
-				if(nextExpress == 0x000A){
-					if(userInput_express == 0x002A){
-						answer_temp = (double)pMul(answer_temp, userInput_float[1]);
-					}
-					if(userInput_express == 0x002F){
-						answer_temp = (double)pDiv(answer_temp, userInput_float[1]);
-					}
-					userInput_floatList[userInput_floatList_Counter] = answer_temp;
-					userInput_floatList_Counter++;
-					goto result;
-				}
-			}
+			answerTempArray_Counter++;
+			diffSymbol = userInputSymbol[1];
+			userInputSymbol[0] = NULL; userInputNum[0] = NULL;
+			continue;
 		}
-		//Different FOUND!!
-		if((userInput_express == 0x002A || userInput_express == 0x002F) && (nextExpress == 0x002B || nextExpress == 0x002D)){
-			if(userInput_express == 0x002A){
-				answer_temp = (double)pMul(userInput_float[0], userInput_float[1]);
-				userInput_floatList[userInput_floatList_Counter] = answer_temp;
-				userInput_floatList_Counter++;
-
-			}
-			if(userInput_express == 0x002F){
-				answer_temp = (double)pDiv(userInput_float[0], userInput_float[1]);
-				userInput_floatList[userInput_floatList_Counter] = answer_temp;
-				userInput_floatList_Counter++;
-
-			}
-		}
-		if((userInput_express == 0x002B || userInput_express == 0x002D) && (nextExpress == 0x002A || nextExpress == 0x002F)){
-			if(userInput_express == 0x002B){
-				answer_temp = (double)pAdd(userInput_float[0], userInput_float[1]);
-				userInput_floatList[userInput_floatList_Counter] = answer_temp;
-				userInput_floatList_Counter++;
-
-			}
-			if(userInput_express == 0x002D){
-				answer_temp = (double)pSub(userInput_float[0], userInput_float[1]);
-				userInput_floatList[userInput_floatList_Counter] = answer_temp;
-				userInput_floatList_Counter++;
-
-			}
+		if((userInputSymbol[0] == 0x002B || userInputSymbol[0] == 0x002D) && (userInputSymbol[1] == 0x002A || userInputSymbol[1] == 0x002F)){
+			answerTempArray[answerTempArray_Counter] = userInputNum[0];
+			answerTempArray_Counter++;
+			diffSymbol = userInputSymbol[0];
+			userInputSymbol[0] = userInputSymbol[1]; userInputNum[0] = userInputNum[1];
+			continue;
 		}
 
-		userInput_float[0] = userInput_float[1];
+		//Will run to here if only got 1 integer and symbol.
+		userInputSymbol[0] = userInputSymbol[1]; userInputNum[0] = userInputNum[1];
 	}
 
-result:
-	answer_temp = 0;
-	do{
-		answer_temp = answer_temp + userInput_floatList[userInput_floatList_Counter];
-	}while(userInput_floatList_Counter--);
-	printf("%lf!!!!", answer_temp);
-
-
-	printf("\n\nEnter q to exit\n");
+	printf("%lf", answerTemp);
 	pCOMMAND();
-	printf("Program terminated normally\n");
+	printf("Program terminated normally!");
 	return 0;
 }
 
-double pAdd(double numA, double numB){
-	double answer;
-	answer = numA + numB;
+double keepAddSub(float userInputNumA, char userInputSymbolA, float userInputNumB, char userInputSymbolB){
+	double answerTemp = NULL;
+	_Bool loopSwitch = TRUE;
+	inputFinishFlag = FALSE;
 
-	return answer;
+	switch(userInputSymbolA){
+	case 0x002B: answerTemp = userInputNumA + userInputNumB; break;
+	case 0x002D: answerTemp = userInputNumA - userInputNumB;
+	}
+
+	while(loopSwitch){
+		userInputNumA = userInputNumB;
+		userInputSymbolA = userInputSymbolB;
+		scanf("%f", &userInputNumB);
+		userInputSymbolB = getchar();
+
+		//If enter detected during add, it will add the final 'userInputNumB' to answerTemp than storage it to array. Note that it a bit different to continMulDiv()
+		if(userInputSymbolB == 0x000A){
+			switch(userInputSymbolA){
+				case 0x002B:
+					answerTemp = answerTemp + userInputNumB;
+					inputFinishFlag = TRUE;
+					return answerTemp;
+				case 0x002D:
+					answerTemp = answerTemp - userInputNumB;
+					inputFinishFlag = TRUE;
+					return answerTemp;
+			}
+		}
+
+		//Check if next symbol not + or -, it will add answerTemp to array. diffSymbol show what is the different symbol. (E.G 5*5-1 diffSymbol = '-')
+		if(userInputSymbolB == 0x002A || userInputSymbolB == 0x002F){
+			switch(userInputSymbolA){
+				case 0x002B:
+					diffSymbol = userInputSymbolA;
+					userInputSymbol[0] = userInputSymbolB;
+					userInputNum[0] = userInputNumB;
+					break;
+				case 0x002D:
+					diffSymbol = userInputSymbolA;
+					userInputSymbol[0] = userInputSymbolB;
+					userInputNum[0] = userInputNumB;
+			}
+
+			loopSwitch = FALSE;
+			return answerTemp;
+		}else{
+			//Continue Add or Sub
+			switch(userInputSymbolA){
+			case 0x002B: answerTemp = answerTemp + userInputNumB;break;
+			case 0x002D: answerTemp = answerTemp - userInputNumB;
+			}
+		}
+	}
+	return 0;
 }
 
-double pSub(double numA, double numB){
-	double answer;
-	answer = numA - numB;
-	return answer;
+double keepMulDiv(float userInputNumA, char userInputSymbolA, float userInputNumB, char userInputSymbolB){
+	double answerTemp = NULL;
+	_Bool loopSwitch = TRUE;
+	inputFinishFlag = FALSE;
+
+	switch(userInputSymbolA){
+	case 0x002A: answerTemp = userInputNumA * userInputNumB; break;
+	case 0x002F: answerTemp = userInputNumA / userInputNumB;
+	}
+
+	while(loopSwitch){
+		userInputNumA = userInputNumB;
+		userInputSymbolA = userInputSymbolB;
+
+		scanf("%f", &userInputNumB);
+		userInputSymbolB = getchar();
+
+		if(userInputSymbolB == 0x000A){
+			switch(userInputSymbolA){
+			case 0x002A:
+				answerTemp = answerTemp * userInputNumB;
+				inputFinishFlag = TRUE;
+				return answerTemp;
+			case 0x002F:
+				answerTemp = answerTemp / userInputNumB;
+				inputFinishFlag = TRUE;
+				return answerTemp;
+			}
+		}
+
+		if(userInputSymbolB == 0x002B || userInputSymbolB == 0x002D){
+			switch(userInputSymbolA){
+				case 0x002A:
+					answerTemp = answerTemp * userInputNumB;
+					diffSymbol = userInputSymbolB;
+					userInputSymbol[0] = NULL;
+					userInputNum[0] = NULL;
+					break;
+				case 0x002F:
+					answerTemp = answerTemp / userInputNumB;
+					diffSymbol = userInputSymbolB;
+					userInputSymbol[0] = NULL;
+					userInputNum[0] = NULL;
+			}
+			loopSwitch = FALSE;
+			return answerTemp;
+		}else{
+			switch(userInputSymbolA){
+			case 0x002A: answerTemp = answerTemp * userInputNumB; break;
+			case 0x002F: answerTemp = answerTemp / userInputNumB;
+			}
+		}
+	}
+	return 0;
 }
 
-double pMul(double numA, double numB){
-	double answer;
-	answer = numA * numB;
-	return answer;
+double inputFinish(unsigned short int arrayCounter){
+	double finalAnswer = NULL;
+	do{
+		finalAnswer = finalAnswer + answerTempArray[arrayCounter];
+	}while(arrayCounter--);
+	return finalAnswer;
 }
-
-double pDiv(double numA, double numB){
-	double answer;
-	answer = numA / numB;
-	return answer;
-}
-
 
 int pCOMMAND(void){
 	const unsigned short int arrayNum = 1;
 	char userCommand[arrayNum];
 	_Bool loopSwitch = TRUE;
 
+	printf("\nEnter q to exit\n");
 	do{
 		scanf("%s", userCommand);
 		if(strlen(userCommand) == 1){

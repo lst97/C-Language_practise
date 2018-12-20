@@ -7,3 +7,4 @@ My C language run-down
 <p><strong>TOOLS:</strong> Eclipse&nbsp;<a href="https://www.eclipse.org/downloads/">https://www.eclipse.org/downloads/</a></p>
 <p><strong>SYSTEM: </strong>Linux lst97-Aspire-E5-573 4.15.0-42-generic #45-Ubuntu SMP Thu Nov 15 19:32:57 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux</p>
 <p><em>Also, I will upload some questions that I interested in.</em></p>
+<p>After video "31、局部变量和全局变量", you will able to creat your own calculator. -20/12/2018</p>

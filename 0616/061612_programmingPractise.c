@@ -22,11 +22,11 @@
 ;* 16122018    lst97       3      Recode
 ;* 17122018    lst97       4      Recoding, can solve basic math problem between two number
 ;* 19122018    lst97       5      Totally rewrote, program now working properly in add, sub, mul, div. I will add more function later soon, see Known Issue
-;* 20122018    lst97       6      pCOMMAND() rewrote, delete string.h for performance improve, compact code.
-;*
+;* 20122018    lst97       6      pCOMMAND() rewrote, delete string.h for performance improve, compact code
+;* 21122018    lst97       7      inputValidator add
 ;* Known Issue       :
 ;*
-;* 1. No function for validating users' input. Will add soon (planed: 21/12/2018)
+;* 1. User input '1+1a, 1+1+1a' e.t.c, ERROR message will not show up immediately, but function still works.
 ;* 2. Havn't integrated in command line, so it only calculate once. Will add soon. (planed: 21/12/2018)
 ;|**********************************************************************;
 */
@@ -42,8 +42,11 @@ int pCOMMAND(void);
 int pDEBUG(void);
 _Bool pEND(void);
 
-double keepAddSub(float*, char*, float, char, _Bool*, char*);
-double keepMulDiv(float*, char*, float, char, _Bool*, char*);
+int inputValida(unsigned short int, char, _Bool*);
+void resetDecla(double*, unsigned short int*, _Bool*, _Bool*, _Bool*, char*, float*, char*, double*);
+
+double keepAddSub(float*, char*, float, char, _Bool*, char*, _Bool*);
+double keepMulDiv(float*, char*, float, char, _Bool*, char*, _Bool*);
 double inputFinish(double*, unsigned short int);
 
 _Bool debugSwitch = FALSE;
@@ -55,6 +58,7 @@ int main(void) {
 	_Bool loopSwitch = TRUE;
 
 	_Bool inputFinishFlag = FALSE;
+	_Bool inputValidaFlag = TRUE;
 	char diffSymbol = NULL;
 
 	float userInputNum[2] = {NULL, NULL};
@@ -62,10 +66,12 @@ int main(void) {
 	double answerTempArray[64];
 
 	while(loopSwitch){
-		scanf("%f", &userInputNum[1]);
+		//scanf("%1f", &userInputNum[1]);
+		inputValida(scanf("%f", &userInputNum[1]), userInputSymbol[1], &inputValidaFlag);
+		if(inputValidaFlag == FALSE){resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);continue;}
 		if(diffSymbol == 0x002D) userInputNum[1] *= NEGATIVE;		//diffSymbol used for set negative integer
 		userInputSymbol[1] = getchar();
-
+		
 		if(userInputSymbol[1] == 0x000A){
 			//Only have one integer after symbol change
 			if(userInputNum[0] == NULL && userInputSymbol[0] == NULL)answerTempArray[answerTempArray_Counter] = userInputNum[1];
@@ -86,11 +92,15 @@ int main(void) {
 		diffSymbol = NULL;
 		//Function Call keepAddSub(): Check if it is more than 3 integer ADD or SUB together.
 		if((userInputSymbol[0] == 0x002B || userInputSymbol[0] == 0x002D) && (userInputSymbol[1] == 0x002B || userInputSymbol[1] == 0x002D)){
-			answerTempArray[answerTempArray_Counter] = keepAddSub(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol);
+			answerTempArray[answerTempArray_Counter] = keepAddSub(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol, &inputValidaFlag);
 			answerTempArray_Counter++;
 			if(inputFinishFlag == TRUE){
 				answerTemp = inputFinish(answerTempArray, answerTempArray_Counter);
 				loopSwitch = FALSE;
+				continue;
+			}
+			if(inputValidaFlag == FALSE){
+				resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);
 				continue;
 			}
 			continue;
@@ -98,11 +108,15 @@ int main(void) {
 
 		//Function Call keepMulDiv(): Check if it is more than 3 integer MUL or DIV together.
 		if((userInputSymbol[0] == 0x002A || userInputSymbol[0] == 0x002F) && (userInputSymbol[1] == 0x002A || userInputSymbol[1] == 0x002F)){
-			answerTempArray[answerTempArray_Counter] = keepMulDiv(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol);
+			answerTempArray[answerTempArray_Counter] = keepMulDiv(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol, &inputValidaFlag);
 			answerTempArray_Counter++;
 			if(inputFinishFlag == TRUE){
 				answerTemp = inputFinish(answerTempArray, answerTempArray_Counter);
 				loopSwitch = FALSE;
+				continue;
+			}
+			if(inputValidaFlag == FALSE){
+				resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);
 				continue;
 			}
 			continue;
@@ -137,7 +151,7 @@ int main(void) {
 	return 0;
 }
 
-double keepAddSub(float *userInputNumA, char *userInputSymbolA, float userInputNumB, char userInputSymbolB, _Bool *inputFinishFlag, char *diffSymbol){
+double keepAddSub(float *userInputNumA, char *userInputSymbolA, float userInputNumB, char userInputSymbolB, _Bool *inputFinishFlag, char *diffSymbol, _Bool *inputValidaFlag){
 	double answerTemp = NULL;
 	_Bool loopSwitch = TRUE;
 	*inputFinishFlag = FALSE;
@@ -150,8 +164,10 @@ double keepAddSub(float *userInputNumA, char *userInputSymbolA, float userInputN
 	while(loopSwitch){
 		*userInputNumA = userInputNumB;
 		*userInputSymbolA = userInputSymbolB;
-		scanf("%f", &userInputNumB);
+		//Call Function inputValida();
+		inputValida(scanf("%f", &userInputNumB), userInputSymbolB, &inputValidaFlag);
 		userInputSymbolB = getchar();
+		if(*inputValidaFlag == FALSE){loopSwitch = 0;continue;}
 
 		//If enter detected during add, it will add the final 'userInputNumB' to answerTemp than storage it to array. Note that it a bit different to continMulDiv()
 		if(userInputSymbolB == 0x000A){
@@ -181,7 +197,7 @@ double keepAddSub(float *userInputNumA, char *userInputSymbolA, float userInputN
 	return 0;
 }
 
-double keepMulDiv(float *userInputNumA, char *userInputSymbolA, float userInputNumB, char userInputSymbolB, _Bool *inputFinishFlag, char *diffSymbol){
+double keepMulDiv(float *userInputNumA, char *userInputSymbolA, float userInputNumB, char userInputSymbolB, _Bool *inputFinishFlag, char *diffSymbol, _Bool *inputValidaFlag){
 	double answerTemp = NULL;
 	_Bool loopSwitch = TRUE;
 	*inputFinishFlag = FALSE;
@@ -193,8 +209,9 @@ double keepMulDiv(float *userInputNumA, char *userInputSymbolA, float userInputN
 	while(loopSwitch){
 		*userInputNumA = userInputNumB;
 		*userInputSymbolA = userInputSymbolB;
-		scanf("%f", &userInputNumB);
+		inputValida(scanf("%f", &userInputNumB), userInputSymbolB, &inputValidaFlag);
 		userInputSymbolB = getchar();
+		if(*inputValidaFlag == FALSE){loopSwitch = 0;continue;}
 
 		if(userInputSymbolB == 0x000A){
 			switch(*userInputSymbolA){
@@ -228,6 +245,34 @@ double inputFinish(double *answerTempArray, unsigned short int arrayCounter){
 	double finalAnswer = NULL;
 	do finalAnswer = finalAnswer + *(answerTempArray + arrayCounter); while(arrayCounter--);
 	return finalAnswer;
+}
+
+int inputValida(unsigned short int userInputNum, char userInputSymbol, _Bool *inputValidaFlag){
+	if(userInputNum == FALSE){
+		printf("Syntax ERROR (0x0001)\n");
+		if(debugSwitch == TRUE)printf("0x0001: Input should be an integer\n");
+		*inputValidaFlag = FALSE;
+		while(getchar() != 0x000A);
+		return 0;
+	}else{
+		switch(userInputSymbol){
+			case NULL: break; case 0x000A: break; case 0x002B: break; case 0x002D: break; case 0x002A: break; case 0x002F: break;
+			default:
+				printf("Syntax ERROR (0x0002)\n");
+				if(debugSwitch == TRUE)printf("0x0002: Symbol should '+', '-', '*', '/'\n");
+				*inputValidaFlag = FALSE;
+				while(getchar() != 0x000A);
+				return 0;
+		}
+	}
+	*inputValidaFlag = TRUE;
+	return 0;
+}
+
+void resetDecla(double *A, unsigned short int *B, _Bool *C, _Bool *D, _Bool *E, char *F, float *G, char *H, double *I){
+	*A = NULL;*B = NULL;*C = TRUE;*D = FALSE;*E = TRUE;*F = NULL;
+	for(unsigned short int counter = 0; counter <=1; counter ++){*(G + counter) = NULL;*(H + counter) = NULL;}
+	for(unsigned short int counter = 0; counter <=63; counter ++){*(I + counter) = NULL;}
 }
 
 int pCOMMAND(void){

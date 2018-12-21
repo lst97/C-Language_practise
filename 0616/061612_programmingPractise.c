@@ -24,10 +24,11 @@
 ;* 19122018    lst97       5      Totally rewrote, program now working properly in add, sub, mul, div. I will add more function later soon, see Known Issue
 ;* 20122018    lst97       6      pCOMMAND() rewrote, delete string.h for performance improve, compact code
 ;* 21122018    lst97       7      inputValidator add
+;* 21122018    lst97       8      Integrated with command line
+;*
 ;* Known Issue       :
 ;*
 ;* 1. User input '1+1a, 1+1+1a' e.t.c, ERROR message will not show up immediately, but function still works.
-;* 2. Havn't integrated in command line, so it only calculate once. Will add soon. (planed: 21/12/2018)
 ;|**********************************************************************;
 */
 #include <stdio.h>
@@ -38,9 +39,7 @@
 #define NEGATIVE -1
 #define SPACEBAR 0x0020
 
-int pCOMMAND(void);
-int pDEBUG(void);
-_Bool pEND(void);
+extern int CALC(void);
 
 int inputValida(unsigned short int, char, _Bool*);
 void resetDecla(double*, unsigned short int*, _Bool*, _Bool*, _Bool*, char*, float*, char*, double*);
@@ -49,14 +48,15 @@ double keepAddSub(float*, char*, float, char, _Bool*, char*, _Bool*);
 double keepMulDiv(float*, char*, float, char, _Bool*, char*, _Bool*);
 double inputFinish(double*, unsigned short int);
 
-_Bool debugSwitch = FALSE;
-
+extern _Bool debugSwitch;
 //ASCII: +2Bh -2Dh *2Ah /2Fh
-int main(void) {
+int CALC(void) {
+	printf("Loading CALC()...");
 	double answerTemp = NULL;
 	unsigned short int answerTempArray_Counter = NULL;
 	_Bool loopSwitch = TRUE;
 
+	_Bool runFlag = TRUE;
 	_Bool inputFinishFlag = FALSE;
 	_Bool inputValidaFlag = TRUE;
 	char diffSymbol = NULL;
@@ -65,89 +65,105 @@ int main(void) {
 	char userInputSymbol[2]= {NULL, NULL};
 	double answerTempArray[64];
 
-	while(loopSwitch){
-		//scanf("%1f", &userInputNum[1]);
-		inputValida(scanf("%f", &userInputNum[1]), userInputSymbol[1], &inputValidaFlag);
-		if(inputValidaFlag == FALSE){resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);continue;}
-		if(diffSymbol == 0x002D) userInputNum[1] *= NEGATIVE;		//diffSymbol used for set negative integer
-		userInputSymbol[1] = getchar();
-		
-		if(userInputSymbol[1] == 0x000A){
-			//Only have one integer after symbol change
-			if(userInputNum[0] == NULL && userInputSymbol[0] == NULL)answerTempArray[answerTempArray_Counter] = userInputNum[1];
+	printf("\nSUCCESS!\n");
+	while(runFlag){
+		char userCommand;
+		printf("[CALC] Press q to exit CALC(), ENTER to activate calculator.\n");
+		scanf("%c", &userCommand);
+		if(userCommand == 0x000A){
+			if(userCommand != 0x000A)while(getchar() != 0x000A);
+			loopSwitch = TRUE;
+			resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);
+			printf("[CALC] Please enter number for calculate:\n");
+			while(loopSwitch){
+				//scanf("%1f", &userInputNum[1]);
+				inputValida(scanf("%f", &userInputNum[1]), userInputSymbol[1], &inputValidaFlag);
+				if(inputValidaFlag == FALSE){resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);continue;}
+				if(diffSymbol == 0x002D) userInputNum[1] *= NEGATIVE;		//diffSymbol used for set negative integer
+				userInputSymbol[1] = getchar();
 
-			//Only have two integer after symbol change
-			switch(userInputSymbol[0]){
-				case 0x002B: answerTempArray[answerTempArray_Counter] = userInputNum[0] + userInputNum[1]; break;
-				case 0x002D: answerTempArray[answerTempArray_Counter] = userInputNum[0] - userInputNum[1]; break;
-				case 0x002A: answerTempArray[answerTempArray_Counter] = userInputNum[0] * userInputNum[1]; break;
-				case 0x002F: answerTempArray[answerTempArray_Counter] = userInputNum[0] / userInputNum[1];
-			}
-		answerTempArray_Counter++;
-		answerTemp = inputFinish(answerTempArray, answerTempArray_Counter);
-		loopSwitch = FALSE;
-		continue;
-		}
+				if(userInputSymbol[1] == 0x000A){
+					//Only have one integer after symbol change
+					if(userInputNum[0] == NULL && userInputSymbol[0] == NULL)answerTempArray[answerTempArray_Counter] = userInputNum[1];
 
-		diffSymbol = NULL;
-		//Function Call keepAddSub(): Check if it is more than 3 integer ADD or SUB together.
-		if((userInputSymbol[0] == 0x002B || userInputSymbol[0] == 0x002D) && (userInputSymbol[1] == 0x002B || userInputSymbol[1] == 0x002D)){
-			answerTempArray[answerTempArray_Counter] = keepAddSub(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol, &inputValidaFlag);
-			answerTempArray_Counter++;
-			if(inputFinishFlag == TRUE){
+					//Only have two integer after symbol change
+					switch(userInputSymbol[0]){
+						case 0x002B: answerTempArray[answerTempArray_Counter] = userInputNum[0] + userInputNum[1]; break;
+						case 0x002D: answerTempArray[answerTempArray_Counter] = userInputNum[0] - userInputNum[1]; break;
+						case 0x002A: answerTempArray[answerTempArray_Counter] = userInputNum[0] * userInputNum[1]; break;
+						case 0x002F: answerTempArray[answerTempArray_Counter] = userInputNum[0] / userInputNum[1];
+					}
+				answerTempArray_Counter++;
 				answerTemp = inputFinish(answerTempArray, answerTempArray_Counter);
 				loopSwitch = FALSE;
 				continue;
-			}
-			if(inputValidaFlag == FALSE){
-				resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);
-				continue;
-			}
-			continue;
-		}
+				}
 
-		//Function Call keepMulDiv(): Check if it is more than 3 integer MUL or DIV together.
-		if((userInputSymbol[0] == 0x002A || userInputSymbol[0] == 0x002F) && (userInputSymbol[1] == 0x002A || userInputSymbol[1] == 0x002F)){
-			answerTempArray[answerTempArray_Counter] = keepMulDiv(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol, &inputValidaFlag);
-			answerTempArray_Counter++;
-			if(inputFinishFlag == TRUE){
-				answerTemp = inputFinish(answerTempArray, answerTempArray_Counter);
-				loopSwitch = FALSE;
-				continue;
-			}
-			if(inputValidaFlag == FALSE){
-				resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);
-				continue;
-			}
-			continue;
-		}
+				diffSymbol = NULL;
+				//Function Call keepAddSub(): Check if it is more than 3 integer ADD or SUB together.
+				if((userInputSymbol[0] == 0x002B || userInputSymbol[0] == 0x002D) && (userInputSymbol[1] == 0x002B || userInputSymbol[1] == 0x002D)){
+					answerTempArray[answerTempArray_Counter] = keepAddSub(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol, &inputValidaFlag);
+					answerTempArray_Counter++;
+					if(inputFinishFlag == TRUE){
+						answerTemp = inputFinish(answerTempArray, answerTempArray_Counter);
+						loopSwitch = FALSE;
+						continue;
+					}
+					if(inputValidaFlag == FALSE){
+						resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);
+						continue;
+					}
+					continue;
+				}
 
-		//Check if it is more than last symbol different with the next symbol. (E.G 1*2+1 or 1+2*1)
-		if((userInputSymbol[0] == 0x002A || userInputSymbol[0] == 0x002F) && (userInputSymbol[1] == 0x002B || userInputSymbol[1] == 0x002D)){
-			switch(userInputSymbol[0]){
-			case 0x002A: answerTempArray[answerTempArray_Counter] = userInputNum[0] * userInputNum[1]; break;
-			case 0x002F: answerTempArray[answerTempArray_Counter] = userInputNum[0] / userInputNum[1];
-			}
-			answerTempArray_Counter++;
-			diffSymbol = userInputSymbol[1];
-			userInputSymbol[0] = NULL; userInputNum[0] = NULL;
-			continue;
-		}
-		if((userInputSymbol[0] == 0x002B || userInputSymbol[0] == 0x002D) && (userInputSymbol[1] == 0x002A || userInputSymbol[1] == 0x002F)){
-			answerTempArray[answerTempArray_Counter] = userInputNum[0];
-			answerTempArray_Counter++;
-			diffSymbol = userInputSymbol[0];
-			userInputSymbol[0] = userInputSymbol[1]; userInputNum[0] = userInputNum[1];
-			continue;
-		}
+				//Function Call keepMulDiv(): Check if it is more than 3 integer MUL or DIV together.
+				if((userInputSymbol[0] == 0x002A || userInputSymbol[0] == 0x002F) && (userInputSymbol[1] == 0x002A || userInputSymbol[1] == 0x002F)){
+					answerTempArray[answerTempArray_Counter] = keepMulDiv(&userInputNum[0], &userInputSymbol[0], userInputNum[1], userInputSymbol[1], &inputFinishFlag, &diffSymbol, &inputValidaFlag);
+					answerTempArray_Counter++;
+					if(inputFinishFlag == TRUE){
+						answerTemp = inputFinish(answerTempArray, answerTempArray_Counter);
+						loopSwitch = FALSE;
+						continue;
+					}
+					if(inputValidaFlag == FALSE){
+						resetDecla(&answerTemp, &answerTempArray_Counter, &loopSwitch, &inputFinishFlag, &inputValidaFlag, &diffSymbol, userInputNum, userInputSymbol, answerTempArray);
+						continue;
+					}
+					continue;
+				}
 
-		//Will run to here if only got 1 integer and symbol.
-		userInputSymbol[0] = userInputSymbol[1]; userInputNum[0] = userInputNum[1];
+				//Check if it is more than last symbol different with the next symbol. (E.G 1*2+1 or 1+2*1)
+				if((userInputSymbol[0] == 0x002A || userInputSymbol[0] == 0x002F) && (userInputSymbol[1] == 0x002B || userInputSymbol[1] == 0x002D)){
+					switch(userInputSymbol[0]){
+					case 0x002A: answerTempArray[answerTempArray_Counter] = userInputNum[0] * userInputNum[1]; break;
+					case 0x002F: answerTempArray[answerTempArray_Counter] = userInputNum[0] / userInputNum[1];
+					}
+					answerTempArray_Counter++;
+					diffSymbol = userInputSymbol[1];
+					userInputSymbol[0] = NULL; userInputNum[0] = NULL;
+					continue;
+				}
+				if((userInputSymbol[0] == 0x002B || userInputSymbol[0] == 0x002D) && (userInputSymbol[1] == 0x002A || userInputSymbol[1] == 0x002F)){
+					answerTempArray[answerTempArray_Counter] = userInputNum[0];
+					answerTempArray_Counter++;
+					diffSymbol = userInputSymbol[0];
+					userInputSymbol[0] = userInputSymbol[1]; userInputNum[0] = userInputNum[1];
+					continue;
+				}
+
+				//Will run to here if only got 1 integer and symbol.
+				userInputSymbol[0] = userInputSymbol[1]; userInputNum[0] = userInputNum[1];
+			}
+
+			printf("= %lf\n", answerTemp);
+		}else if(userCommand == 0x0071){
+			runFlag = FALSE;
+		}else{
+			printf("[CALC] COMMAND NOT FOUND!\n");
+			while(getchar() != 0x000A);
+		}
 	}
-
-	printf("%lf", answerTemp);
-	pCOMMAND();
-	printf("Program terminated normally!");
+	printf("EXIT CALC()...\nSUCCESS!\n");
 	return 0;
 }
 
@@ -248,8 +264,8 @@ double inputFinish(double *answerTempArray, unsigned short int arrayCounter){
 }
 
 int inputValida(unsigned short int userInputNum, char userInputSymbol, _Bool *inputValidaFlag){
-	if(userInputNum == FALSE){
-		printf("Syntax ERROR (0x0001)\n");
+	if(userInputNum == NULL){
+		printf("[CALC] Syntax ERROR (0x0001)\n");
 		if(debugSwitch == TRUE)printf("0x0001: Input should be an integer\n");
 		*inputValidaFlag = FALSE;
 		while(getchar() != 0x000A);
@@ -258,8 +274,8 @@ int inputValida(unsigned short int userInputNum, char userInputSymbol, _Bool *in
 		switch(userInputSymbol){
 			case NULL: break; case 0x000A: break; case 0x002B: break; case 0x002D: break; case 0x002A: break; case 0x002F: break;
 			default:
-				printf("Syntax ERROR (0x0002)\n");
-				if(debugSwitch == TRUE)printf("0x0002: Symbol should '+', '-', '*', '/'\n");
+				printf("[CALC] Syntax ERROR (0x0002)\n");
+				if(debugSwitch == TRUE)printf("0x0002: Symbol should be '+', '-', '*', '/'\n");
 				*inputValidaFlag = FALSE;
 				while(getchar() != 0x000A);
 				return 0;
@@ -273,46 +289,4 @@ void resetDecla(double *A, unsigned short int *B, _Bool *C, _Bool *D, _Bool *E, 
 	*A = NULL;*B = NULL;*C = TRUE;*D = FALSE;*E = TRUE;*F = NULL;
 	for(unsigned short int counter = 0; counter <=1; counter ++){*(G + counter) = NULL;*(H + counter) = NULL;}
 	for(unsigned short int counter = 0; counter <=63; counter ++){*(I + counter) = NULL;}
-}
-
-int pCOMMAND(void){
-	char userCommand = NULL;
-	char Validator = NULL;
-	char loopSwitch = TRUE;
-
-	printf("\nEnter q to exit\n");
-	while(loopSwitch){
-		loopSwitch = FALSE;
-		userCommand = NULL;
-		Validator = NULL;
-		scanf("%c%c", &userCommand, &Validator);
-		if(Validator == 0x000A || Validator == 0x0020){
-			switch(userCommand){
-			case 'q': pEND(); break;
-			case 'd': pDEBUG(); loopSwitch = TRUE;break;
-			default: printf("%c: is not a command!\n", userCommand); loopSwitch = TRUE; while(getchar() != 0x000A); continue;
-			}
-		}else if(Validator != NULL){
-			printf("%c%c", userCommand, Validator);
-			while(Validator != 0x0020 && Validator != 0x000A){
-				scanf("%c", &Validator);
-				if(Validator != 0x0020 && Validator != 0x000A) printf("%c", Validator);
-			}
-			printf(": is not a command!\n");
-			if(Validator != 0x000A) while(getchar() != 0x000A);
-			loopSwitch = TRUE;
-		}
-	}
-	return 0;
-}
-
-int pDEBUG(void){
-	if(debugSwitch == TRUE)debugSwitch = FALSE;
-	else debugSwitch = TRUE;
-	printf("Debug Mode = %u\n", debugSwitch);
-	return 0;
-}
-
-_Bool pEND(void){
-	return 0;
 }

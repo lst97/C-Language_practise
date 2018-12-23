@@ -18,12 +18,15 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 22122018    lst97       1      First release
+;* 24122018    lst97       2      Now user can input the array size they what using malloc()
 ;*
 ;* Known Issue       :
 ;*
 ;|**********************************************************************;
 */
 #include <stdio.h>
+#include <stdlib.h>
+
 //There are some different way for doing quickshort.
 #define TRUE 0x01
 #define FALSE 0x00
@@ -42,39 +45,47 @@ void quickShort(int *, int, int );
 
 _Bool debugSwitch = FALSE;
 int main(void) {
-	printf("[*SHELL] Please enter a group of integer:\n");
 	//MAX amount of integer that user can input.
-	int arrayList[32];
 	unsigned short int numberOfInteger;
 	_Bool loopSwitch = TRUE;
+	int *DMarrayList = NULL;
+	unsigned short int userInputArraySize;
+
+	printf("[*SHELL] Please enter a array size:\n");
+	scanf("%hu", &userInputArraySize);
+	DMarrayList = (int *)malloc(userInputArraySize * sizeof(int));
 
 	//Get users' integer
+	printf("[*SHELL] Please enter a group of integer:\n");
 	for(unsigned short int accumla = 0; loopSwitch == TRUE; accumla++){
 		char checkEnd;
-		if(scanf("%d", &arrayList[accumla]) != 1){
-			printf("[*SHELL] Syntax ERROR! - invalid number detected\n");
-			for(unsigned short int accumula; accumula <= 31; accumula++){arrayList[accumula] = NULL;}
+		if(accumla <= userInputArraySize -1){
+			if(scanf("%d", &DMarrayList[accumla]) != 1){
+				printf("[*SHELL] Syntax ERROR! - invalid number detected\n");
+				for(unsigned short int accumula; accumula <= userInputArraySize; accumula++){DMarrayList[accumula] = NULL;}
+				while(getchar() != 0x000A);
+				accumla = -1;numberOfInteger = 0;
+				continue;
+			}
+			checkEnd = getchar();
+			if(checkEnd == 0x000A){numberOfInteger = accumla;loopSwitch = FALSE;
+			}else if(checkEnd != 0x0020){				//Input validator
+				printf("[*SHELL] Syntax ERROR! - no space detected between integer\n");
+				for(unsigned short int accumula; accumula <= userInputArraySize; accumula++){DMarrayList[accumula] = NULL;}
+				while(getchar() != 0x000A);
+				accumla = -1;numberOfInteger = 0;
+			}
+		}else{
+			printf("[*SHELL] Syntax ERROR! - out of array size\n");
+			for(unsigned short int accumula; accumula <= userInputArraySize; accumula++){DMarrayList[accumula] = NULL;}
 			while(getchar() != 0x000A);
-			accumla = -1;
-			numberOfInteger = 0;
-			continue;
-		}
-		checkEnd = getchar();
-		if(checkEnd == 0x000A){
-			numberOfInteger = accumla;
-			loopSwitch = FALSE;
-		}else if(checkEnd != 0x0020){				//Input validator
-			printf("[*SHELL] Syntax ERROR! - no space detected between integer\n");
-			for(unsigned short int accumula; accumula <= 31; accumula++){arrayList[accumula] = NULL;}
-			while(getchar() != 0x000A);
-			numberOfInteger = 0;
-			accumla = -1;
+			accumla = -1;numberOfInteger = 0;
 		}
 	}
 
-	quickShort(arrayList, 0, numberOfInteger);
-	for(unsigned short int accumula; accumula <= numberOfInteger; accumula++){printf("%d ", arrayList[accumula]);}
-
+	quickShort(DMarrayList, 0, numberOfInteger);
+	for(unsigned short int accumula = 0; accumula <= numberOfInteger; accumula++){printf("%d ", DMarrayList[accumula]);}
+	free(DMarrayList);
 	pCOMMAND();
 	printf("Program terminated normally!");
 	return 0;

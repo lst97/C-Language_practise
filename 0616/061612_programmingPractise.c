@@ -25,10 +25,11 @@
 ;* 20122018    lst97       6      pCOMMAND() rewrote, delete string.h for performance improve, compact code
 ;* 21122018    lst97       7      inputValidator add
 ;* 21122018    lst97       8      Integrated with command line
+;* 24122018    lst97       9      Fix a problem where keepAddSub(), keepMulDiv() not function properly
 ;*
 ;* Known Issue       :
 ;*
-;* 1. User input '1+1a, 1+1+1a' e.t.c, ERROR message will not show up immediately, but function still works.
+;* 1. User input '1+1a, 1+1+1a' e.t.c, ERROR message will not show up immediately, but function still works. I guess problem case by the scanf() scanned 1+1 but ignore the a, fix later
 ;|**********************************************************************;
 */
 #include <stdio.h>
@@ -181,7 +182,7 @@ double keepAddSub(float *userInputNumA, char *userInputSymbolA, float userInputN
 		*userInputNumA = userInputNumB;
 		*userInputSymbolA = userInputSymbolB;
 		//Call Function inputValida();
-		inputValida(scanf("%f", &userInputNumB), userInputSymbolB, &inputValidaFlag);
+		inputValida(scanf("%f", &userInputNumB), userInputSymbolB, *&inputValidaFlag);
 		userInputSymbolB = getchar();
 		if(*inputValidaFlag == FALSE){loopSwitch = 0;continue;}
 
@@ -225,7 +226,7 @@ double keepMulDiv(float *userInputNumA, char *userInputSymbolA, float userInputN
 	while(loopSwitch){
 		*userInputNumA = userInputNumB;
 		*userInputSymbolA = userInputSymbolB;
-		inputValida(scanf("%f", &userInputNumB), userInputSymbolB, &inputValidaFlag);
+		inputValida(scanf("%f", &userInputNumB), userInputSymbolB, *&inputValidaFlag);
 		userInputSymbolB = getchar();
 		if(*inputValidaFlag == FALSE){loopSwitch = 0;continue;}
 

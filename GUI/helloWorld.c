@@ -27,8 +27,12 @@
 #include <windows.h>
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
-	static char szContent[] = TEXT("Hello World");
-	static char szCaption[] = TEXT("Message");
+	static char szContent[] = "Hello World";
+	static char szCaption[] = "Message";
+
+	//Fix for unicode problem.
+	//static TCHAR szContent[] = TEXT("Hello World"); //TCHAR == wchar_t
+	//static TCHAR szCaption[] = TEXT("Message");
 
 	MessageBox(NULL, szContent, szCaption, MB_OK);
 	return 0;

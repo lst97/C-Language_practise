@@ -1,9 +1,46 @@
 # C-Language_practise
 My C language run-down
 
-<p>This repository is logging the way that I learn assembly using the book and video with Ubuntu 18.04 LTS:</p>
-<p><strong>BOOK:</strong> "C Primer Plus Version_6" ISBN:9787115390592&nbsp; &nbsp;<a href="https://item.jd.com/11917487.html" rel="nofollow">https://www.amazon.cn/dp/B00EYSPGYE</a></p>
-<p><strong>VIDEO:</strong> " 【C语言】《带你学C带你飞》（小甲鱼）"&nbsp;<a href="https://www.bilibili.com/video/av27744141/?p=3">https://www.bilibili.com/video/av27744141/?p=3</a></p>
-<p><strong>TOOLS:</strong> Eclipse&nbsp;<a href="https://www.eclipse.org/downloads/">https://www.eclipse.org/downloads/</a></p>
-<p><strong>SYSTEM: </strong>Linux lst97-Aspire-E5-573 4.15.0-42-generic #45-Ubuntu SMP Thu Nov 15 19:32:57 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux</p>
+<p># C-Language_practise My C language run-down</p>
+<p>This repository is logging the way that I learn assembly using the book and video with Ubuntu 18.10:</p>
+<p><strong>BOOK:</strong></p>
+<table style="width: 768px;">
+<tbody>
+<tr>
+<td style="width: 319.883px;">&nbsp;C Primer Plus Version 6</td>
+<td style="width: 450.117px;">&nbsp;<a href="https://www.amazon.cn/dp/B00EYSPGYE" rel="nofollow">https://www.amazon.cn/dp/B00EYSPGYE</a></td>
+</tr>
+<tr>
+<td style="width: 319.883px;">&nbsp;Programming Windows 6th Edition</td>
+<td style="width: 450.117px;">&nbsp;<a href="https://amzn.to/2Vg6GLC">https://amzn.to/2Vg6GLC</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>VIDEO:</strong></p>
+<table style="width: 768px;">
+<tbody>
+<tr>
+<td style="width: 319.883px;">【C语言】《带你学C带你飞》（小甲鱼）</td>
+<td style="width: 450.117px;">&nbsp;<a href="https://www.bilibili.com/video/av27744141/?p=3">https://www.bilibili.com/video/av27744141/?p=3</a></td>
+</tr>
+<tr>
+<td style="width: 319.883px;">【C语言】Windows程序设计</td>
+<td style="width: 450.117px;">&nbsp;<a href="https://www.bilibili.com/video/av10786783/">https://www.bilibili.com/video/av10786783/</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>TOOLS:</strong></p>
+<table style="width: 768px;">
+<tbody>
+<tr>
+<td style="width: 319.883px;">&nbsp;Eclipse</td>
+<td style="width: 450.117px;">&nbsp;<a href="https://www.eclipse.org/downloads/">https://www.eclipse.org/downloads/</a></td>
+</tr>
+<tr>
+<td style="width: 319.883px;">&nbsp;Visual Studio Community 2017</td>
+<td style="width: 450.117px;">&nbsp;<a href="https://visualstudio.microsoft.com/vs/community/">https://visualstudio.microsoft.com/vs/community/</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>SYSTEM:&nbsp;</strong>Linux lst97-Aspire-E5-573 4.18.0-16-generic #17-Ubuntu SMP Fri Feb 8 00:06:57 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux</p>
 <p><em>Also, I will upload some questions that I interested in.</em></p>

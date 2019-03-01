@@ -17,7 +17,7 @@
 ;* Revision History  :
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
-;* 0103022019    lst97       1      First release
+;* 01032019    lst97       1      First release
 ;*
 ;* Known Issue       :
 ;*

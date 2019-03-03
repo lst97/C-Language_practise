@@ -18,6 +18,7 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 01032019    lst97       1      First release
+;* 04032019    lst97       2      Now can show basic scroll function
 ;*
 ;* Known Issue       :
 ;* Top right string display problem.
@@ -40,6 +41,7 @@ static int nWidth = 640;
 static int nHeight = 480;
 static int cxLabel, cyLabel, cxClient, cyClient;
 static int cxSysMetricsScreen, cySysMetricsScreen;
+static int iVscrollPos;
 
 //hInstance: Handle;
 //hPrevInstance: Always NULL (A handle to the previous instance of the application);
@@ -184,24 +186,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		ReleaseDC(hWnd, hdc);
 
+		SetScrollRange(hWnd, SB_VERT, 0, 43, FALSE);
+
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
-
-		GetClientRect(hWnd, &rect);
-		StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("laisiotou1997@gmail.com"));
-		StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-		TextOut(hdc, cxLabel, cyLabel *26, szBuffer, strLength);
 
 		cxSysMetricsScreen = GetSystemMetrics(SM_CXSCREEN);
 		cySysMetricsScreen = GetSystemMetrics(SM_CYSCREEN);
 
-		StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("System Resolotion: %d * %d px"), cxSysMetricsScreen, cySysMetricsScreen);
-		StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-		TextOut(hdc, cxLabel, cyLabel, szBuffer, strLength);
+		if (iVscrollPos < 2) {
+			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("System Resolotion: %d * %d px"), cxSysMetricsScreen, cySysMetricsScreen);
+			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
+			TextOut(hdc, cxLabel, cyLabel - 15, szBuffer, strLength);
 
-		StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Client Resolotion: %d * %d px"), cxClient, cyClient);
-		StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-		TextOut(hdc, cxLabel, cyLabel * 2, szBuffer, strLength);
+			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Client Resolotion: %d * %d px"), cxClient, cyClient);
+			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
+			TextOut(hdc, cxLabel, cyLabel * 2 - 15, szBuffer, strLength);
+		}
+
+		memset(szBuffer, 0, MAXBUFFERSIZE);
+		for (unsigned int row = 0; row < 40; row++) {
+			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("%d. Some text"), row +1);
+			TextOut(hdc, cxLabel, cyLabel * ((row +3) - iVscrollPos) -15, szBuffer, 35);
+			memset(szBuffer, 0, MAXBUFFERSIZE);
+		}
 
 		EndPaint(hWnd, &ps);
 		return 0;
@@ -217,24 +225,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar Lineup!"));
 			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
 			TextOut(hdc, cxClient -10, 15, szBuffer, strLength);
+			iVscrollPos -= 1;
 			break;
 
 		case SB_LINEDOWN:
 			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar LineDown!"));
 			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
 			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
+			iVscrollPos += 1;
 			break;
 
 		case SB_PAGEUP:
 			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar PageUp!"));
 			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
 			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
+			iVscrollPos -= cyClient / cyLabel;
 			break;
 
 		case SB_PAGEDOWN:
 			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar PageDown!"));
 			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
 			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
+			iVscrollPos += cyClient / cyLabel;
 			break;
 
 		case SB_THUMBTRACK:
@@ -247,10 +259,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar DrackingRelease!"));
 			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
 			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
+			iVscrollPos = HIWORD(wParam);
 			break;
 		}
 
 		ReleaseDC(hWnd, hdc);
+
+		iVscrollPos = max(0, min(iVscrollPos, 43));
+
+		if (iVscrollPos != GetScrollPos(hWnd, SB_VERT)) {
+			SetScrollPos(hWnd, SB_VERT, iVscrollPos, TRUE);
+			InvalidateRect(hWnd, NULL, TRUE);
+		}
 		return 0;
 
 	case WM_SIZE:

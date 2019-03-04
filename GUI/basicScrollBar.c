@@ -12,36 +12,47 @@
 ;*
 ;* Copyright         : GNU GENERAL PUBLIC LICENSE Version 3
 ;*
-;* Purpose           : Scroll Bar template
+;* Purpose           : Scroll Bar template - using scrollWindow
 ;*
 ;* Revision History  :
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 01032019    lst97       1      First release
 ;* 04032019    lst97       2      Now can show basic scroll function
+;* 04032019    lst97       3      CALLBACK rewrote, using scrollwindow();
 ;*
 ;* Known Issue       :
-;* Top right string display problem.
 ;*
 ;|**********************************************************************;
 */
 
+#define LINES 28 
+
 #include <windows.h>
 #include "strsafe.h"
-
-#define MAXBUFFERSIZE 64
 
 //Declar
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 //DATA:
-static char szAppName[] = "Form1";
+static char szAppName[] = "Basic Scroll Bar";
 static char szErrorMessage[] = "This program only run on Windows NT!";
-static int nWidth = 640;
-static int nHeight = 480;
-static int cxLabel, cyLabel, cxClient, cyClient;
-static int cxSysMetricsScreen, cySysMetricsScreen;
-static int iVscrollPos;
+static int nClientWidth = 640;
+static int nClientHeight = 480;
+
+static char *szString[] = {
+			TEXT("anteater"), TEXT("bear"), TEXT("cougar"),
+			TEXT("dingo"), TEXT("elephant"), TEXT("falcon"),
+			TEXT("gazelle"), TEXT("hyena"), TEXT("iguana"),
+			TEXT("jackal"), TEXT("kangaroo"), TEXT("llama"),
+			TEXT("moose"), TEXT("newt"), TEXT("octopus"),
+			TEXT("penguin"), TEXT("quail"), TEXT("rat"),
+			TEXT("squid"), TEXT("tortoise"), TEXT("urus"),
+			TEXT("vole"), TEXT("walrus"), TEXT("xylophone"),
+			TEXT("yak"), TEXT("zebra"),
+			TEXT("This line contains words, but no character. Go figure."),
+			TEXT("")
+};
 
 //hInstance: Handle;
 //hPrevInstance: Always NULL (A handle to the previous instance of the application);
@@ -81,6 +92,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 		return 0;
 	}
 
+	HWND hWnd;
 	/*
 	HWND CreateWindow(
 	  LPCWSTR   lpClassName,
@@ -96,11 +108,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	  LPVOID    lpParam
 	);
 	*/
-
-	HWND hWnd;
 	//If the function succeeds, the return value is a handle to the new window, NULL if fails.
 	hWnd = CreateWindow(szAppName, szAppName, WS_TILED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VSCROLL,
-		CW_USEDEFAULT, CW_USEDEFAULT, nWidth, nHeight, NULL, NULL, hInstance, NULL);
+		CW_USEDEFAULT, CW_USEDEFAULT, nClientWidth, nClientHeight, NULL, NULL, hInstance, NULL);
 
 	//nCmdShow	控制窗口如何显示，如果发送应用程序的程序提供了 STARTUPINFO 结构，则应用程序第一次调用 ShowWindow 时该参数被忽略。否则，在第一次调用 ShowWindow 函数时，该值应为在函数 WinMain 中 nCmdShow 参数。
 	//1. 如果窗口之前可见，则返回值为非 0；
@@ -109,26 +119,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
 	//UpdateWindow 函数绕过应用程序的消息队列，直接发送 WM_PAINT 消息给指定窗口的窗口过程。
 	UpdateWindow(hWnd);
-
-	/*
-	typedef struct tagMSG {
-	  HWND   hWnd;
-	  UINT   message;
-	  WPARAM wParam;
-	  LPARAM lParam;
-	  DWORD  time;
-	  POINT  pt;
-	} MSG, *PMSG, *LPMSG;
-	*/
 	MSG msg;
 	/*
-	BOOL GetMessage(
-	  LPMSG lpMsg,
-	  HWND  hWnd,
-	  UINT  wMsgFilterMin,
-	  UINT  wMsgFilterMax
-	);
-
 	- - - - - [hWnd] - - - - -
 	1. 需要获取消息的窗口的句柄，该窗口必须属于当前线程
 	2. 当其值是 NULL 时，将获取所有的当前线程的窗口消息和线程消息
@@ -147,158 +139,206 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	HDC hdc;
-	/*
-	typedef struct tagPAINTSTRUCT {
-	  HDC  hdc;
-	  BOOL fErase;
-	  RECT rcPaint;
-	  BOOL fRestore;
-	  BOOL fIncUpdate;
-	  BYTE rgbReserved[32];
-	} PAINTSTRUCT, *PPAINTSTRUCT;
-	*/
 	PAINTSTRUCT ps;
-
-	//RECT 结构定义了一个矩形的左上角和右下角的坐标。
-	/*
-	typedef struct _RECT {
-	  LONG left;
-	  LONG top;
-	  LONG right;
-	  LONG bottom;
-	} RECT, *PRECT;
-	*/
-	RECT rect;
+	TEXTMETRIC tm;
+	SCROLLINFO si;
+	/*typedef struct tagSCROLLINFO {
+		UINT cbSize;
+		UINT fMask;
+		int  nMin;
+		int  nMax;
+		UINT nPage;
+		int  nPos;
+		int  nTrackPos;
+	} SCROLLINFO, *LPSCROLLINFO;*/
+	HRESULT hr;
 
 	//DATA
-	char szBuffer[MAXBUFFERSIZE];
-	size_t strLength;
-	TEXTMETRIC tm;
+	static int xClientPos, yClientPos;
+	static int xClientPosMax;					//Add a scroll bar beyond this width
+
+	static int xCharPos, yCharPos;
+	static int xUpper;							//The horizontal width of the uppercase character of the font
+
+	static int xScrollPos, yScrollPos;
+
+	int xStringPos, yStringPos;
+
+	unsigned int faFirstLine, faLastLine;		//The first line & last line to be repaint
+
+	unsigned int strLength;
 
 	//CODE
-	switch (message) {
+	switch(message) {
 	case WM_CREATE:
 		hdc = GetDC(hWnd);
 
 		GetTextMetrics(hdc, &tm);
-		cxLabel = tm.tmAveCharWidth;
-		cyLabel = tm.tmHeight + tm.tmExternalLeading;
+		xCharPos = tm.tmAveCharWidth;
+		xUpper = (tm.tmPitchAndFamily & 1 ? 3 : 2) * xCharPos / 2;
+		yCharPos = tm.tmHeight + tm.tmExternalLeading;
 
 		ReleaseDC(hWnd, hdc);
+		//Set to width of 48 lowercase characters + width of 12 uppercase characters
+		xClientPosMax = 48 * xCharPos + 12 * xUpper;
 
-		SetScrollRange(hWnd, SB_VERT, 0, 43, FALSE);
+		return 0;
+
+	case WM_SIZE:
+		xClientPos = LOWORD(lParam);			//((WORD)(((DWORD_PTR)(l)) & 0xffff))
+		yClientPos = HIWORD(lParam);			//((WORD)((((DWORD_PTR)(l)) >> 16) & 0xffff))
+
+		//Set the vertical scrollbar range and page size(setting the page size will determine the thickness of the scrollbar)
+		si.cbSize = sizeof(si);
+		si.fMask = SIF_RANGE | SIF_PAGE;
+		si.nMin = 0;
+		si.nMax = LINES - 1;
+		si.nPage = yClientPos / yCharPos;
+		SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
+
+		si.cbSize = sizeof(si);
+		si.fMask = SIF_RANGE | SIF_PAGE;
+		si.nMin = 0;
+		si.nMax = 2 + xClientPosMax / xCharPos;
+		si.nPage = xClientPos / xCharPos;
+		SetScrollInfo(hWnd, SB_HORZ, &si, TRUE);
+
+		return 0;
+
+	// Get all the information of the horizontal scroll bar
+	case WM_HSCROLL:
+		si.cbSize = sizeof(si);
+		si.fMask = SIF_ALL;
+		GetScrollInfo(hWnd, SB_HORZ, &si);
+
+
+		// Save the current scrollbar position and compare later
+		xScrollPos = si.nPos;
+		switch (LOWORD(wParam)) {
+		case SB_LINELEFT:
+			si.nPos -= 1;
+			break;
+		case SB_LINERIGHT:
+			si.nPos += 1;
+			break;
+		case SB_PAGELEFT:
+			si.nPos -= si.nPage;
+			break;
+		case SB_PAGERIGHT:
+			si.nPos += si.nPage;
+			break;
+		case SB_THUMBTRACK:
+			si.nPos = si.nTrackPos;
+			break;
+		default:
+			break;
+		}
+
+		// Set the new position of the scrollbar slider
+		si.fMask = SIF_POS;
+		SetScrollInfo(hWnd, SB_HORZ, &si, TRUE);
+
+		// Get the position of the scrollbar slider, which may not be the same value due to window adjustment
+		GetScrollInfo(hWnd, SB_HORZ, &si);
+
+		// Compare with the previously saved values, if different, scroll the window
+		if (si.nPos != xScrollPos) {
+			ScrollWindow(hWnd, xCharPos *(xScrollPos - si.nPos), 0, NULL, NULL);
+		}
+
+		return 0;
+
+	case WM_VSCROLL:
+		si.cbSize = sizeof(si);
+		si.fMask = SIF_ALL;
+		GetScrollInfo(hWnd, SB_VERT, &si);
+
+		yScrollPos = si.nPos;
+		switch (LOWORD(wParam)) {
+		//HOME button
+		case SB_TOP:
+			si.nPos = si.nMin;
+			break;
+		//END button
+		case SB_BOTTOM:
+			si.nPos = si.nMax;
+			break;
+		case SB_LINEUP:
+			si.nPos -= 1;
+			break;
+		case SB_LINEDOWN:
+			si.nPos += 1;
+			break;
+		case SB_PAGEUP:
+			si.nPos -= si.nPage;
+			break;
+		case SB_PAGEDOWN:
+			si.nPos += si.nPage;
+			break;
+		case SB_THUMBTRACK:
+			si.nPos = si.nTrackPos;
+			break;
+		default:
+			break;
+		}
+
+		si.fMask = SIF_POS;
+		SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
+		GetScrollInfo(hWnd, SB_VERT, &si);
+
+		if (si.nPos != yScrollPos) {
+			ScrollWindow(hWnd, 0, yCharPos * (yScrollPos - si.nPos), NULL, NULL);
+			UpdateWindow(hWnd);
+		}
+
+		return 0;
 
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 
-		cxSysMetricsScreen = GetSystemMetrics(SM_CXSCREEN);
-		cySysMetricsScreen = GetSystemMetrics(SM_CYSCREEN);
+		// Get the position of the vertical scroll bar
+		si.cbSize = sizeof(si);
+		si.fMask = SIF_POS;
+		GetScrollInfo(hWnd, SB_VERT, &si);
+		yScrollPos = si.nPos;
 
-		if (iVscrollPos < 2) {
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("System Resolotion: %d * %d px"), cxSysMetricsScreen, cySysMetricsScreen);
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxLabel, cyLabel - 15, szBuffer, strLength);
+		GetScrollInfo(hWnd, SB_HORZ, &si);
+		xScrollPos = si.nPos;
 
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Client Resolotion: %d * %d px"), cxClient, cyClient);
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxLabel, cyLabel * 2 - 15, szBuffer, strLength);
-		}
+		// Calculate the area that needs to be redrawn
+		faFirstLine = max(0, yScrollPos + ps.rcPaint.top / yCharPos);
+		faLastLine = min(LINES - 1, yScrollPos + ps.rcPaint.bottom / yCharPos);
 
-		memset(szBuffer, 0, MAXBUFFERSIZE);
-		for (unsigned int row = 0; row < 40; row++) {
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("%d. Some text"), row +1);
-			TextOut(hdc, cxLabel, cyLabel * ((row +3) - iVscrollPos) -15, szBuffer, 35);
-			memset(szBuffer, 0, MAXBUFFERSIZE);
+		for (int loopCounter = faFirstLine; loopCounter <= faLastLine; loopCounter++) {
+			xStringPos = xCharPos * (1 - xScrollPos);
+			yStringPos = yCharPos * (loopCounter - yScrollPos);
+
+			hr = StringCchLength(szString[loopCounter], 4096, &strLength);
+
+			// Not understand
+			/*if (FAILED(hr) | strLength == NULL) {
+				MessageBox(hWnd, TEXT("Failed to get string length!"), TEXT("ERROR"), MB_OK | MB_ICONERROR);
+				return 0;
+			}*/
+
+			// draw a row of data in the client area
+			TextOut(hdc, xStringPos, yStringPos, szString[loopCounter], strLength);
 		}
 
 		EndPaint(hWnd, &ps);
 		return 0;
 
-	case WM_VSCROLL:
-
-		hdc = GetDC(hWnd);
-
-		SetTextAlign(hdc, TA_TOP | TA_RIGHT);
-
-		switch (LOWORD(wParam)) {
-		case SB_LINEUP:
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar Lineup!"));
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxClient -10, 15, szBuffer, strLength);
-			iVscrollPos -= 1;
-			break;
-
-		case SB_LINEDOWN:
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar LineDown!"));
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
-			iVscrollPos += 1;
-			break;
-
-		case SB_PAGEUP:
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar PageUp!"));
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
-			iVscrollPos -= cyClient / cyLabel;
-			break;
-
-		case SB_PAGEDOWN:
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar PageDown!"));
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
-			iVscrollPos += cyClient / cyLabel;
-			break;
-
-		case SB_THUMBTRACK:
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar Dracking!"));
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
-			break;
-
-		case SB_THUMBPOSITION:
-			StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Scroll Bar DrackingRelease!"));
-			StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-			TextOut(hdc, cxClient - 10, 15, szBuffer, strLength);
-			iVscrollPos = HIWORD(wParam);
-			break;
-		}
-
-		ReleaseDC(hWnd, hdc);
-
-		iVscrollPos = max(0, min(iVscrollPos, 43));
-
-		if (iVscrollPos != GetScrollPos(hWnd, SB_VERT)) {
-			SetScrollPos(hWnd, SB_VERT, iVscrollPos, TRUE);
-			InvalidateRect(hWnd, NULL, TRUE);
-		}
-		return 0;
-
-	case WM_SIZE:
-
-		cxClient = LOWORD(lParam);
-		cyClient = HIWORD(lParam);
-
-		//hdc = GetDC(hWnd);
-
-		//StringCchPrintf(szBuffer, MAXBUFFERSIZE, TEXT("Client Resolotion: %d * %d px"), LOWORD(lParam), HIWORD(lParam));
-		//StringCchLength(szBuffer, MAXBUFFERSIZE, &strLength);
-		//TextOut(hdc, cxLabel, cyLabel *2, szBuffer, strLength);
-
-		//ReleaseDC(hWnd, hdc);
-		return 0;
-
 	case WM_CLOSE:
-		switch (MessageBox(hWnd, TEXT("Are you sure you want to Quit?"), TEXT("Message"), MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2)) {
+		switch (MessageBox(hWnd, TEXT("Do you really want to quit?"), TEXT("Message"), MB_YESNO | MB_ICONQUESTION)) {
 		case IDYES:
-			DestroyWindow(hWnd);
-		default:
+			PostQuitMessage(0);
 			return 0;
+		default:
+			break;
 		}
 
-	case WM_DESTROY:
-		PostQuitMessage(0);
-
-	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
+		return 0;
 	}
+
+	return DefWindowProc(hWnd, message, wParam, lParam);
 }

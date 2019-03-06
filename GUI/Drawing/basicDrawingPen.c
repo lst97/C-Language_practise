@@ -18,6 +18,7 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 06032019    lst97       1      First release
+;* 06032019    lst97       2      Add SetBkColor(), SetBkMode(), SetROP2, GetROP2
 ;*
 ;* Known Issue       :
 ;*
@@ -47,7 +48,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	wndClass.hInstance = hInstance;									//A handle to the instance that contains the window procedure for the class.
 	wndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);	//A handle to the class background brush.
+	wndClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);	//A handle to the class background brush.
 	wndClass.lpszMenuName = NULL;									//The resource name of the class menu, as the name appears in the resource file.
 	wndClass.lpszClassName = szAppName;								//The maximum length for lpszClassName is 256.
 
@@ -94,8 +95,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		hdc = BeginPaint(hWnd, &ps);
 		GetClientRect(hWnd, &rect);
 
+		SetBkColor(hdc, RGB(0, 0xff, 0));
 		// Create 4 differnet type of lines
-		for (int loopCounter = 1; loopCounter < 5; loopCounter++) {
+		for (unsigned short int loopCounter = 1; loopCounter < 5; loopCounter++) {
 			hPen = CreatePen(loopCounter, 1, RGB(0, 0, 0xff));
 			hOldPen = SelectObject(hdc, hPen);
 
@@ -104,6 +106,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 			SelectObject(hdc, hOldPen);
 		}
+		SetBkColor(hdc, RGB(0xff, 0xff, 0xff));
+		/*SetBkMode(hdc, TRANSPARENT);
+		SetROP2
+		GetROP2
+		*/
 
 		// Cut it half
 		hPen = CreatePen(PS_SOLID, 4, RGB(0xff, 0, 0));
@@ -131,7 +138,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		SelectObject(hdc, hOldPen);
 
 		// Refference Line
-		SelectObject(hdc, GetStockObject(BLACK_PEN));
+		SelectObject(hdc, GetStockObject(WHITE_PEN));
 
 		MoveToEx(hdc, 0, rect.bottom * 6 / 10, NULL);
 		LineTo(hdc, rect.right, rect.bottom * 6 / 10);

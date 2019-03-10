@@ -19,6 +19,7 @@
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 06032019    lst97       1      First release
 ;* 06032019    lst97       2      Add SetBkColor(), SetBkMode(), SetROP2, GetROP2
+;* 10032019    lst97       3      Add Brush
 ;*
 ;* Known Issue       :
 ;*
@@ -48,7 +49,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	wndClass.hInstance = hInstance;									//A handle to the instance that contains the window procedure for the class.
 	wndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wndClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);	//A handle to the class background brush.
+	wndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);	//A handle to the class background brush.
 	wndClass.lpszMenuName = NULL;									//The resource name of the class menu, as the name appears in the resource file.
 	wndClass.lpszClassName = szAppName;								//The maximum length for lpszClassName is 256.
 
@@ -62,7 +63,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	hWnd = CreateWindow(szAppName, szAppName, WS_TILED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 		CW_USEDEFAULT, CW_USEDEFAULT, nClientWidth, nClientHeight, NULL, NULL, hInstance, NULL);
 
-	ShowWindow(hWnd, nCmdShow);
+	ShowWindow(hWnd, SW_SHOWNORMAL);		// nCmdShow
 
 	UpdateWindow(hWnd);
 	MSG msg;
@@ -82,6 +83,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	RECT rect;
 
 	HPEN hPen, hOldPen;
+	HBRUSH hBrush, hOldBrush;
 
 	//DATA
 
@@ -137,8 +139,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		SelectObject(hdc, hOldPen);
 
+		// Middle Ellipse
+		/*hBrush = GetStockObject(LTGRAY_BRUSH);*/
+		hBrush = CreateSolidBrush(RGB(0xff, 0, 0));
+		hOldBrush = SelectObject(hdc, hBrush);
+
+		Ellipse(hdc, rect.right * 4 / 10, rect.bottom * 6 / 10, rect.right * 6 / 10, rect.bottom * 9 / 10);
+		SelectObject(hdc, hOldBrush);
+
 		// Refference Line
-		SelectObject(hdc, GetStockObject(WHITE_PEN));
+		SelectObject(hdc, GetStockObject(BLACK_PEN));
 
 		MoveToEx(hdc, 0, rect.bottom * 6 / 10, NULL);
 		LineTo(hdc, rect.right, rect.bottom * 6 / 10);
@@ -160,6 +170,5 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		return 0;
 	}
-
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }

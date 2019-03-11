@@ -2,25 +2,24 @@
 ;|**********************************************************************;
 ;* Project           : Basic_C_GUI
 ;*
-;* Program name      : keyLogger.c
+;* Program name      : keybordMsg.c
 ;*
 ;* Author            : SIO TOU LAI (laisiotou1997@gmail.com)
 ;*
-;* Date created      : 11/03/2019
+;* Date created      : 10/03/2019
 ;*
 ;* Version           : Internal
 ;*
 ;* Copyright         : GNU GENERAL PUBLIC LICENSE Version 3
 ;*
-;* Purpose           : To log all the event of the keybord
+;* Purpose           : To resive windows ESC key down.
 ;*
 ;* Revision History  :
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
-;* 11032019    lst97       1      First release
-;*
+;* 10032019    lst97       1      First release
+;* 11032019    lst97       1      add more code but dont understand some concept, goto next section, come back when finish.
 ;* Known Issue       :
-;* Only the layout, to be continue NOT FUNCTIONAL
 ;*
 ;|**********************************************************************;
 */
@@ -46,6 +45,17 @@ static char szTitleAlt[] = "ALT";
 static char szTitlePrev[] = "Prev";
 static char szTitleTran[] = "Tran";
 
+static char szMessage[12];
+static char szeKey[12];
+static char szChar[12];
+static char szRepeat[12];
+static char szScan[12];
+static char szExt[12];
+static char szAlt[12];
+static char szPrev[12];
+static char szTran[12];
+
+static int iType;
 static unsigned int strLength;
 static char szMsgBuffer[16];
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nCmdShow) {
@@ -104,6 +114,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	case WM_SYSCHAR:
 	case WM_SYSDEADCHAR:
 
+		pmsg[0].hwnd = hWnd;
+		pmsg[0].message = message;
+		pmsg[0].wParam = wParam;
+		pmsg[0].lParam = lParam;
+
 		hdc = GetDC(hWnd);
 		GetClientRect(hWnd, &rect);
 		GetClientRect(hWnd, &rectScroll);
@@ -131,7 +146,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		GetClientRect(hWnd, &rect);
 		GetClientRect(hWnd, &rectScroll);
 		GetTextMetrics(hdc, &tm);
-	
 		TextOut(hdc, rect.right * 0/18 +10, rect.bottom * 0/25, szTitleMessage, 7);
 		TextOut(hdc, rect.right * 3/18, rect.bottom * 0/25, szTitleKey, 3);
 		TextOut(hdc, rect.right * 5 / 18, rect.bottom * 0 / 25, szTitleChar, 4);
@@ -169,6 +183,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		MoveToEx(hdc, rect.right * 17 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
 		LineTo(hdc, (rect.right * 17 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2 +1), rect.bottom * 0 / 25 + tm.tmHeight);
 
+		iType = pmsg[0].message == WM_CHAR || pmsg[0].message == WM_SYSCHAR || pmsg[0].message == WM_DEADCHAR || pmsg[0].message == WM_SYSDEADCHAR;
+		GetKeyNameText(pmsg[0].lParam, szMessage, 12);
+		StringCchPrintf(szMessage, 12, (char)iType);
 		EndPaint(hWnd, &ps);
 		return 0;
 

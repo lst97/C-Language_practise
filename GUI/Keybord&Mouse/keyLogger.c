@@ -12,14 +12,17 @@
 ;*
 ;* Copyright         : GNU GENERAL PUBLIC LICENSE Version 3
 ;*
-;* Purpose           : To resive windows ESC key down.
+;* Purpose           : Logging user keyboard event.
 ;*
 ;* Revision History  :
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 10032019    lst97       1      First release
 ;* 11032019    lst97       1      add more code but dont understand some concept, goto next section, come back when finish.
+;* 15032019    lst97       2      Fully functional.
+;* 
 ;* Known Issue       :
+;* 1. Incorrect key when program first start, because of no memory clear.
 ;*
 ;|**********************************************************************;
 */
@@ -35,29 +38,6 @@ static char szErrorMessage[] = "This program only run on Windows NT!";
 static int nClientWidth = 640;
 static int nClientHeight = 480;
 
-static char szTitleMessage[] = "Message";
-static char szTitleKey[] = "Key";
-static char szTitleChar[] = "Char";
-static char szTitleRepeat[] = "Repeat";
-static char szTitleScan[] = "Scan";
-static char szTitleExt[] = "Ext";
-static char szTitleAlt[] = "ALT";
-static char szTitlePrev[] = "Prev";
-static char szTitleTran[] = "Tran";
-
-static char szMessage[12];
-static char szeKey[12];
-static char szChar[12];
-static char szRepeat[12];
-static char szScan[12];
-static char szExt[12];
-static char szAlt[12];
-static char szPrev[12];
-static char szTran[12];
-
-static int iType;
-static unsigned int strLength;
-static char szMsgBuffer[16];
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nCmdShow) {
 
 	//WNDCLASS -> RegisterClass -> CreateWindow -> ShowWindow -> UpdateWindow -> MsgLoop
@@ -100,11 +80,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	RECT rect;
 	RECT rectScroll;
 	TEXTMETRICA tm;
-	PMSG pmsg;
+	static PMSG pmsg;	//must static?
+
 	//DATA
+	static char szTitleMessage[] = "Message";
+	static char szTitleKey[] = "Key";
+	static char szTitleChar[] = "Char";
+	static char szTitleRepeat[] = "Repeat";
+	static char szTitleScan[] = "Scan";
+	static char szTitleExt[] = "Ext";
+	static char szTitleAlt[] = "ALT";
+	static char szTitlePrev[] = "Prev";
+	static char szTitleTran[] = "Tran";
+
+	static char *szMessagePool[] = { TEXT("WM_KEYDOWN"), TEXT("WM_KEYUP"), TEXT("WM_CHAR"), TEXT("WM_DEADCHAR"), TEXT("WM_SYSKEYDOWN"), TEXT("WM_SYSKEYUP"), TEXT("WM_SYSCHAR"), TEXT("WM_SYSDEADCHAR") };
+	static unsigned int szKey = 0;
+	static unsigned int szRepeat = 0;
+	static unsigned int szScan = 0;
+	static char szUp[4] = "Up  ";
+	static char szDown[4] = "Down";
+	static char szTrue[5] = "True ";
+	static char szFalse[5] = "False";
+
+	static unsigned int strLength = 0;
 
 	//CODE
-	switch(message) {
+	switch (message) {
+	case WM_CREATE:
+		hdc = GetDC(hWnd);
+		GetClientRect(hWnd, &rect);
+		GetClientRect(hWnd, &rectScroll);
+		ReleaseDC(hWnd, hdc);
+
+		pmsg = malloc(rect.bottom / 25 * sizeof(MSG));
+
 	case WM_KEYDOWN:
 	case WM_KEYUP:
 	case WM_CHAR:
@@ -119,35 +128,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		pmsg[0].wParam = wParam;
 		pmsg[0].lParam = lParam;
 
+		// Scrolling effect for each key
 		hdc = GetDC(hWnd);
 		GetClientRect(hWnd, &rect);
 		GetClientRect(hWnd, &rectScroll);
 		GetTextMetrics(hdc, &tm);
-		rectScroll.top += (tm.tmHeight + 5);
+		rectScroll.top += (tm.tmHeight +14);
 		ScrollWindow(hWnd, 0, -rect.bottom / 25, &rectScroll, &rectScroll);
 		ReleaseDC(hWnd, hdc);
-
-		switch (wParam) {
-		case VK_ESCAPE:
-			hdc = GetDC(hWnd);
-			GetClientRect(hWnd, &rect);
-			GetClientRect(hWnd, &rectScroll);
-			GetTextMetrics(hdc, &tm);
-			rectScroll.top += (tm.tmHeight + 5);
-			ScrollWindow(hWnd, 0, -rect.bottom / 25, &rectScroll, &rectScroll);
-			ReleaseDC(hWnd, hdc);
-		default:
-			return 0;
-		}
-		return 0;
 
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		GetClientRect(hWnd, &rect);
 		GetClientRect(hWnd, &rectScroll);
 		GetTextMetrics(hdc, &tm);
-		TextOut(hdc, rect.right * 0/18 +10, rect.bottom * 0/25, szTitleMessage, 7);
-		TextOut(hdc, rect.right * 3/18, rect.bottom * 0/25, szTitleKey, 3);
+		SelectObject(hdc, GetStockObject(SYSTEM_FIXED_FONT));
+
+		// Draw Title
+		TextOut(hdc, rect.right * 0 / 18 + 10, rect.bottom * 0 / 25, szTitleMessage, 7);
+		TextOut(hdc, rect.right * 4 / 18, rect.bottom * 0 / 25, szTitleKey, 3);
 		TextOut(hdc, rect.right * 5 / 18, rect.bottom * 0 / 25, szTitleChar, 4);
 		TextOut(hdc, rect.right * 7 / 18, rect.bottom * 0 / 25, szTitleRepeat, 6);
 		TextOut(hdc, rect.right * 9 / 18, rect.bottom * 0 / 25, szTitleScan, 4);
@@ -156,36 +155,67 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		TextOut(hdc, rect.right * 15 / 18, rect.bottom * 0 / 25, szTitlePrev, 4);
 		TextOut(hdc, rect.right * 17 / 18, rect.bottom * 0 / 25, szTitleTran, 4);
 
+		// Draw Title Underline
 		MoveToEx(hdc, rect.right * 0 / 18 + 10, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 0 / 18 + 10 + tm.tmMaxCharWidth*1 + tm.tmAveCharWidth*6 +3), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 0 / 18 + 10 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 6 + 2), rect.bottom * 0 / 25 + tm.tmHeight);
 
-		MoveToEx(hdc, rect.right * 3 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 3 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2), rect.bottom * 0 / 25 + tm.tmHeight);
+		MoveToEx(hdc, rect.right * 4 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
+		LineTo(hdc, (rect.right * 4 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 1 + 2), rect.bottom * 0 / 25 + tm.tmHeight);
 
 		MoveToEx(hdc, rect.right * 5 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 5 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2 +1), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 5 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2 + 3), rect.bottom * 0 / 25 + tm.tmHeight);
 
 		MoveToEx(hdc, rect.right * 7 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 7 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 5 -1), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 7 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 5 - 1), rect.bottom * 0 / 25 + tm.tmHeight);
 
 		MoveToEx(hdc, rect.right * 9 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 9 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 3 -1), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 9 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 3 - 1), rect.bottom * 0 / 25 + tm.tmHeight);
 
 		MoveToEx(hdc, rect.right * 11 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 11/ 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 1 +1), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 11 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 1 + 2), rect.bottom * 0 / 25 + tm.tmHeight);
 
 		MoveToEx(hdc, rect.right * 13 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 13 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 1 +1), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 13 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 1 + 2), rect.bottom * 0 / 25 + tm.tmHeight);
 
 		MoveToEx(hdc, rect.right * 15 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 15 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2 +1), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 15 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2 + 4), rect.bottom * 0 / 25 + tm.tmHeight);
 
 		MoveToEx(hdc, rect.right * 17 / 18, rect.bottom * 0 / 25 + tm.tmHeight, NULL);
-		LineTo(hdc, (rect.right * 17 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2 +1), rect.bottom * 0 / 25 + tm.tmHeight);
+		LineTo(hdc, (rect.right * 17 / 18 + tm.tmMaxCharWidth * 1 + tm.tmAveCharWidth * 2 + 4), rect.bottom * 0 / 25 + tm.tmHeight);
 
-		iType = pmsg[0].message == WM_CHAR || pmsg[0].message == WM_SYSCHAR || pmsg[0].message == WM_DEADCHAR || pmsg[0].message == WM_SYSDEADCHAR;
-		GetKeyNameText(pmsg[0].lParam, szMessage, 12);
-		StringCchPrintf(szMessage, 12, (char)iType);
+		// Output
+		/*
+		#define WM_KEYFIRST                     0x0100
+		#define WM_KEYDOWN                      0x0100
+		#define WM_KEYUP                        0x0101
+		#define WM_CHAR                         0x0102
+		#define WM_DEADCHAR                     0x0103
+		#define WM_SYSKEYDOWN                   0x0104
+		#define WM_SYSKEYUP                     0x0105
+		#define WM_SYSCHAR                      0x0106
+		#define WM_SYSDEADCHAR                  0x0107
+		*/
+		StringCchLength(szMessagePool[pmsg[0].message - 0x0100], 16, &strLength);
+		TextOut(hdc, rect.right * 0 / 18 + 10, rect.bottom * 24 / 25, szMessagePool[pmsg[0].message - 0x0100], strLength);		// -0x0100 = szMessagePool[1] || szMessagePool[2] || szMessagePool[3] e.t.c.
+		szKey = pmsg[0].wParam;
+
+		// If WM_CHAR event happen, display will be little bit different. Different (szKey)
+		0x00000102 == pmsg[0].message ? TextOut(hdc, rect.right * 5 / 18, rect.bottom * 24 / 25, (LPCSTR)(&szKey), 1) : TextOut(hdc, rect.right * 4 / 18, rect.bottom * 24 / 25, (LPCSTR)(&szKey), 1);
+		
+		// +0x30 for single int to string
+		szRepeat = LOWORD(pmsg[0].lParam) + 0x30;
+		TextOut(hdc, rect.right * 7 / 18, rect.bottom * 24 / 25, (LPCSTR)(&szRepeat), 1);
+
+		// Scan code - HIWORD(pmsg[0].lParam) storage scan code. (unsigned int)
+		char szBufferTemp[3];
+		StringCchPrintf(szBufferTemp, 3, TEXT("%d"), HIWORD(pmsg[0].lParam) & 0xFF);
+		TextOut(hdc, rect.right * 9 / 18, rect.bottom * 24 / 25, szBufferTemp, 2);
+
+		// Other 4 cat
+		TextOut(hdc, rect.right * 11 / 18, rect.bottom * 24 / 25, 0x01000000 & pmsg[0].lParam ? szTrue : szFalse, 5);
+		TextOut(hdc, rect.right * 13 / 18, rect.bottom * 24 / 25, 0x20000000 & pmsg[0].lParam ? szTrue : szFalse, 5);
+		TextOut(hdc, rect.right * 15 / 18, rect.bottom * 24 / 25, 0x40000000 & pmsg[0].lParam ? szUp : szDown, 4);
+		TextOut(hdc, rect.right * 17 / 18, rect.bottom * 24 / 25, 0x80000000 & pmsg[0].lParam ? szUp : szDown, 4);
 		EndPaint(hWnd, &ps);
 		return 0;
 

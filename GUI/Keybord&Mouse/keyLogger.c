@@ -2,7 +2,7 @@
 ;|**********************************************************************;
 ;* Project           : Basic_C_GUI
 ;*
-;* Program name      : keybordMsg.c
+;* Program name      : keyLogger.c
 ;*
 ;* Author            : SIO TOU LAI (laisiotou1997@gmail.com)
 ;*

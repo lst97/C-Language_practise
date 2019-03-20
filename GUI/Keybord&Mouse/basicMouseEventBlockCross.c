@@ -18,7 +18,8 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 18032019    lst97       1      First release
-;* 
+;* 20032019    lst97       2      Add keyboard control
+;*
 ;* Known Issue       :
 ;*
 ;|**********************************************************************;
@@ -37,7 +38,7 @@
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 // DATA
-static char szAppName[] = "Basic Keyboard&Mouse - Mouse Event - Double Click";
+static char szAppName[] = "Basic Keyboard&Mouse - Mouse Event - Crossing Block";
 static char szErrorMessage[] = "This program only run on Windows NT!";
 static unsigned int nClientWidth = 640;
 static unsigned int nClientHeight = 480;
@@ -86,12 +87,64 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	unsigned int xBlockPos, yBlockPos;
 	PAINTSTRUCT ps;
 	RECT rect;
+	POINT point;
 
 	// CODE
 	switch(message){
 	case WM_SIZE:
 		cxBlockWidth = GET_X_LPARAM(lParam) / BLOCKNUMBER;
 		cyBlockHeight = GET_Y_LPARAM(lParam) / BLOCKNUMBER;
+		return 0;
+
+	case WM_SETFOCUS:
+		ShowCursor(TRUE);
+		return 0;
+	case WM_KILLFOCUS:
+		ShowCursor(FALSE);
+		return 0;
+
+	case WM_KEYDOWN:
+		GetCursorPos(&point);
+		ScreenToClient(hWnd, &point);
+
+		xBlockPos = max(0, min(BLOCKNUMBER - 1, point.x / cxBlockWidth));
+		yBlockPos = max(0, min(BLOCKNUMBER - 1, point.y / cyBlockHeight));
+
+		switch (wParam) {
+		case VK_UP:
+			yBlockPos--;
+			break;
+		case VK_DOWN:
+			yBlockPos++;
+			break;
+		case VK_LEFT:
+			xBlockPos--;
+			break;
+		case VK_RIGHT:
+			xBlockPos++;
+			break;
+
+		case VK_HOME:
+			xBlockPos = yBlockPos = 0;
+			break;
+		case VK_END:
+			xBlockPos = yBlockPos = BLOCKNUMBER - 1;
+			break;
+
+		case VK_RETURN:
+		case VK_SPACE:
+			SendMessage(hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELONG(xBlockPos * cxBlockWidth, yBlockPos * cyBlockHeight));
+			break;
+		}
+
+		xBlockPos = (xBlockPos + BLOCKNUMBER) % BLOCKNUMBER;
+		yBlockPos = (yBlockPos + BLOCKNUMBER) % BLOCKNUMBER;
+
+		point.x = xBlockPos * cxBlockWidth + cxBlockWidth / 2;
+		point.y = yBlockPos * cyBlockHeight + cyBlockHeight / 2;
+
+		ClientToScreen(hWnd, &point);
+		SetCursorPos(point.x, point.y);
 		return 0;
 
 	case WM_LBUTTONDOWN:

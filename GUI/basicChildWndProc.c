@@ -18,13 +18,13 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 20032019    lst97       1      First release
-;*
+;* 22032019    lst97       2      Add keyboard event
 ;* Known Issue       :
 ;*
 ;|**********************************************************************;
 */
 /* Reference */
-// https://www.bilibili.com/video/av10340284/?p=41 | https://fishc.com
+// https://www.bilibili.com/video/av10340284/?p=42 | https://fishc.com
 
 // Header
 #include <windows.h>
@@ -37,10 +37,12 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK ChildWndProc(HWND, UINT, WPARAM, LPARAM);
 
 // DATA
-static char szMainAppName[] = "Basic Keyboard&Mouse - Mouse Event - Crossing Block";
+static char szMainAppName[] = "Basic Keyboard&Mouse - Crossing Block";
 static char szErrorMessage[] = "This program only run on Windows NT!";
 static unsigned int nClientWidth = 640;
 static unsigned int nClientHeight = 480;
+
+static unsigned int idFocus;
 
 static char szSubAppName[] = "Sub Class";
 
@@ -58,7 +60,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);	//A handle to the class background brush.
 	wndClass.lpszMenuName = NULL;									//The resource name of the class menu, as the name appears in the resource file.
-	wndClass.lpszClassName = szMainAppName;								//The maximum length for lpszClassName is 256.
+	wndClass.lpszClassName = szMainAppName;							//The maximum length for lpszClassName is 256.
 
 	if (!RegisterClass(&wndClass)) {								//Value is zero if Register FAIL (!0) = TRUE;
 		MessageBox(NULL, szErrorMessage, szMainAppName, MB_ICONERROR);
@@ -116,6 +118,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		MessageBeep(0);
 		return 0;
 
+	case WM_SETFOCUS:
+		SetFocus(GetDlgItem(hWnd, idFocus));
+		return 0;
+
+	case WM_KEYDOWN:
+		xBlockPos = idFocus & 0xFF;
+		yBlockPos = idFocus >> 8;
+
+		switch (wParam) {
+		case VK_UP:		yBlockPos--; break;
+		case VK_DOWN:	yBlockPos++; break;
+		case VK_LEFT:	xBlockPos--; break;
+		case VK_RIGHT:	xBlockPos++; break;
+		case VK_HOME:	xBlockPos = yBlockPos = 0; break;
+		case VK_END:	xBlockPos = yBlockPos = BLOCKNUMBER - 1; break;
+		default: return 0;
+		}
+
+		xBlockPos = (xBlockPos + BLOCKNUMBER) % BLOCKNUMBER;
+		yBlockPos = (yBlockPos + BLOCKNUMBER) % BLOCKNUMBER;
+
+		idFocus = yBlockPos << 8 | xBlockPos;
+		SetFocus(GetDlgItem(hWnd, idFocus));
+		return 0;
+
 	case WM_CLOSE:
 		switch (MessageBox(hWnd, TEXT("Do you really want to QUIT?"), TEXT("MESSAGE"), MB_YESNO | MB_ICONQUESTION)) {
 		case IDYES:
@@ -141,9 +168,22 @@ LRESULT CALLBACK ChildWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
 		SetWindowLongPtr(hWnd, 0, 0);
 		return 0;
 
+	case WM_KEYDOWN:
+		if (wParam != VK_RETURN && wParam != VK_SPACE) {
+			SendMessage(GetParent(hWnd), message, wParam, lParam);
+			return 0;
+		}
+
 	case WM_LBUTTONDOWN:
 		SetWindowLongPtr(hWnd, 0, 1 ^ GetWindowLongPtr(hWnd, 0));
+		SetFocus(hWnd);
 		InvalidateRect(hWnd, NULL, FALSE);
+		return 0;
+
+	case WM_SETFOCUS:
+		idFocus = GetWindowLongPtr(hWnd, GWL_ID);
+	case WM_KILLFOCUS:
+		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 
 	case WM_PAINT:
@@ -159,6 +199,17 @@ LRESULT CALLBACK ChildWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
 			LineTo(hdc, rect.right, 0);
 		}
 
+		if (hWnd == GetFocus()) {
+			rect.left += rect.right / 10;
+			rect.right -= rect.left;
+			rect.top += rect.bottom / 10;
+			rect.bottom -= rect.top;
+
+			SelectObject(hdc, GetStockObject(NULL_BRUSH));
+			SelectObject(hdc, CreatePen(PS_DASH, 0, 0));
+			Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
+			DeleteObject(SelectObject(hdc, GetStockObject(BLACK_PEN)));
+		}
 		EndPaint(hWnd, &ps);
 		return 0;
 	}

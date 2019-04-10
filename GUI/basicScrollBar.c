@@ -20,6 +20,7 @@
 ;* 01032019    lst97       1      First release
 ;* 04032019    lst97       2      Now can show basic scroll function
 ;* 04032019    lst97       3      CALLBACK rewrote, using scrollwindow();
+;* 10042019    lst97       4      Add MouseWheel;
 ;*
 ;* Known Issue       :
 ;*
@@ -40,7 +41,7 @@ static char szErrorMessage[] = "This program only run on Windows NT!";
 static int nClientWidth = 640;
 static int nClientHeight = 480;
 
-static char *szString[] = {
+static char* szString[] = {
 			TEXT("anteater"), TEXT("bear"), TEXT("cougar"),
 			TEXT("dingo"), TEXT("elephant"), TEXT("falcon"),
 			TEXT("gazelle"), TEXT("hyena"), TEXT("iguana"),
@@ -142,16 +143,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	PAINTSTRUCT ps;
 	TEXTMETRIC tm;
 	SCROLLINFO si;
-	/*typedef struct tagSCROLLINFO {
-		UINT cbSize;
-		UINT fMask;
-		int  nMin;
-		int  nMax;
-		UINT nPage;
-		int  nPos;
-		int  nTrackPos;
-	} SCROLLINFO, *LPSCROLLINFO;*/
 	HRESULT hr;
+	static int iDeltaPerLine, iAccumDelta;
+	ULONG ulScrollLines;
+
 
 	//DATA
 	static int xClientPos, yClientPos;
@@ -169,7 +164,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	unsigned int strLength;
 
 	//CODE
-	switch(message) {
+	switch (message) {
 	case WM_CREATE:
 		hdc = GetDC(hWnd);
 
@@ -181,7 +176,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		ReleaseDC(hWnd, hdc);
 		//Set to width of 48 lowercase characters + width of 12 uppercase characters
 		xClientPosMax = 48 * xCharPos + 12 * xUpper;
+		//No return.
 
+	case WM_SETTINGCHANGE:
+		SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &ulScrollLines, 0);
+		if (ulScrollLines) {
+			iDeltaPerLine = WHEEL_DELTA / ulScrollLines;
+		}
+		else {iDeltaPerLine = 0;}
 		return 0;
 
 	case WM_SIZE:
@@ -205,7 +207,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		return 0;
 
-	// Get all the information of the horizontal scroll bar
+		// Get all the information of the horizontal scroll bar
 	case WM_HSCROLL:
 		si.cbSize = sizeof(si);
 		si.fMask = SIF_ALL;
@@ -243,7 +245,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		// Compare with the previously saved values, if different, scroll the window
 		if (si.nPos != xScrollPos) {
-			ScrollWindow(hWnd, xCharPos *(xScrollPos - si.nPos), 0, NULL, NULL);
+			ScrollWindow(hWnd, xCharPos * (xScrollPos - si.nPos), 0, NULL, NULL);
 		}
 
 		return 0;
@@ -255,11 +257,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		yScrollPos = si.nPos;
 		switch (LOWORD(wParam)) {
-		//HOME button
+			//HOME button
 		case SB_TOP:
 			si.nPos = si.nMin;
 			break;
-		//END button
+			//END button
 		case SB_BOTTOM:
 			si.nPos = si.nMax;
 			break;
@@ -291,6 +293,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			UpdateWindow(hWnd);
 		}
 
+		return 0;
+
+	case WM_MOUSEWHEEL:
+		if (iDeltaPerLine == 0) break;
+
+		iAccumDelta += GET_WHEEL_DELTA_WPARAM(wParam);
+		while (iAccumDelta >= iDeltaPerLine) {
+			SendMessage(hWnd, WM_VSCROLL, SB_LINEUP, 0);
+			iAccumDelta -= iDeltaPerLine;
+		}
+		while (iAccumDelta <= -iDeltaPerLine) {
+			SendMessage(hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
+			iAccumDelta += iDeltaPerLine;
+		}
 		return 0;
 
 	case WM_PAINT:

@@ -25,6 +25,7 @@
 */
 
 #include "resource.h"
+#include <windowsx.h>
 #include <windows.h>
 
 //DEFINE
@@ -54,7 +55,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	wndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wndClass.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);			//A handle to the class background brush.
-	wndClass.lpszMenuName = IDR_MENU;								//The resource name of the class menu, as the name appears in the resource file.
+	wndClass.lpszMenuName = (LPCSTR)IDR_MENU;								//The resource name of the class menu, as the name appears in the resource file.
 	wndClass.lpszClassName = szAppName;								//The maximum length for lpszClassName is 256.
 
 	if (!RegisterClass(&wndClass)) {								//Value is zero if Register FAIL (!0) = TRUE;
@@ -87,6 +88,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	static HDC hdc;
 	static HINSTANCE hInstance;
 	static PAINTSTRUCT ps;
+	static POINT point;
 
 	//CODE
 	switch (message) {
@@ -94,14 +96,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		hInstance = ((LPCREATESTRUCT)lParam)->hInstance;
 		
 		hMenu = LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MENU));
+		hMenu = GetSubMenu(hMenu, 1);
 		hwnd = CreateWindow(TEXT("menu"), TEXT("MENU"), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,CW_USEDEFAULT, CW_USEDEFAULT,NULL, hMenu, hInstance, NULL);
 		SetMenu(hwnd, hMenu);
 		return 0;
 
 	case WM_COMMAND:
-		menuId = LOWORD(wParam);
 		if (!lParam) {
-			switch (menuId) {
+			switch (LOWORD(wParam)) {
 			case ID_HELP_ABOUT:
 				LoadString(hInstance, IDS_STRING_ABOUT, szBufferAbout, MAXABOUTBUFFER);
 				MessageBox(hwnd, szBufferAbout, TEXT("ABOUT"), MB_OK | MB_ICONINFORMATION);
@@ -130,6 +132,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 				break;
 			}
 		}
+		return 0;
+	case WM_RBUTTONUP:
+		point.x = GET_X_LPARAM(lParam);
+		point.y = GET_Y_LPARAM(lParam);
+		ClientToScreen(hwnd, &point);
+
+		TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, point.x, point.y, 0, hwnd, NULL);
 		return 0;
 
 	case WM_CLOSE:

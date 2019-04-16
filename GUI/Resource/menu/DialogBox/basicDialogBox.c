@@ -12,15 +12,15 @@
 ;*
 ;* Copyright         : GNU GENERAL PUBLIC LICENSE Version 3
 ;*
-;* Purpose           : Using Dialog to set main window BG color.
+;* Purpose           : Using Dialog to set main window BG style.
 ;*
 ;* Revision History  :
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 15042019    lst97       1      First release
+;* 16042019    lst97       2      Fix random problem
 ;*
 ;* Known Issue       :
-;* Random color not function correctly, fix later.
 ;*
 ;|**********************************************************************;
 */
@@ -34,24 +34,26 @@
 
 //DECLAR
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-BOOL CALLBACK SetCircleDlgProc(HWND, UINT, WPARAM, LPARAM);
+BOOL CALLBACK ChangeBgStyleDlgProc(HWND, UINT, WPARAM, LPARAM);
 BOOL CALLBACK AboutDlgProc(HWND, UINT, WPARAM,LPARAM);
-void PaintWindows(HWND, int, int);
-void PaintTheBlock(HWND, int, int);
+void PaintWindow(HWND, int, int, BOOL);
+void PaintDemoArea(HWND, int, int, BOOL);
 
 
 //DATA
 static char szAppName[MINABOUTBUFFER];
 static char szOsError[MINABOUTBUFFER];
+static char szAboutDeatil[MAXABOUTBUFFER];
 int iClientWidth = 640;
 int iClientHeight = 480;
 
-int iCurrentColor = IDC_SETCIRCLE_RADIO_RED;
-int iCurrentFigure = IDC_SETCIRCLE_RADIO_RECTANGLE;
+int iCurrentColor = IDC_CHANGEBGSTYLE_RADIO_RED;
+int iCurrentFigure = IDC_CHANGEBGSTYLE_RADIO_RECTANGLE;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int nCmdShow) {
 	LoadString(hInstance, IDS_STRING_TITLE, szAppName, MINABOUTBUFFER);
 	LoadString(hInstance, IDS_STRING_OSERROR, szOsError, MINABOUTBUFFER);
+	LoadString(hInstance, IDS_STRING_ABOUT, szAboutDeatil, MAXABOUTBUFFER);
 	//WNDCLASS -> RegisterClass -> CreateWindow -> ShowWindow -> UpdateWindow -> MsgLoop
 
 	WNDCLASS wndClass;
@@ -100,19 +102,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case ID_HELP_ABOUT:
-			DialogBox(hInstance, (LPCSTR)IDD_DIALOG_ABOUT, hwnd, AboutDlgProc);
+			DialogBox(hInstance, (LPCSTR)IDD_DIALOG_ABOUT, hwnd, AboutDlgProc);		// Show about Dialogbox
 			break;
-		case ID_SETTING_SETCIRCLE:
-			DialogBox(hInstance, (LPCSTR)IDD_DIALOG_SETCIRCLE, hwnd, SetCircleDlgProc);
-			InvalidateRect(hwnd, NULL, TRUE);
+		case ID_SETTING_CHANGEBGSTYLE:
+			DialogBox(hInstance, (LPCSTR)IDD_DIALOG_CHANGEBGSTYLE, hwnd, ChangeBgStyleDlgProc);		// Show Style Dialogbox
+			InvalidateRect(hwnd, NULL, TRUE);			// set to invalid so dialogbox can change the style.
+			break;
+		case ID_PROGAM_EXIT:
+			SendMessage(hwnd, WM_CLOSE, wParam, lParam);
 			break;
 		}
 		return 0;
 	case WM_PAINT:
 		BeginPaint(hwnd, &ps);
+		PaintWindow(hwnd, iCurrentColor, iCurrentFigure, FALSE);
 		EndPaint(hwnd, &ps);
 
-		PaintWindows(hwnd, iCurrentColor, iCurrentFigure);
 		return 0;
 
 	case WM_CLOSE:
@@ -128,70 +133,74 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-BOOL CALLBACK SetCircleDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
-	static HWND hCtrlBlock;
-	static int iColor, iFigure;
+BOOL CALLBACK ChangeBgStyleDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+	static HWND hDlgPaintArea;			
+	static int iColor, iFigure;				// iColor save Group 1 radio id, iFigure save Group 2 radio id.
+	BOOL bRadomSwitch = FALSE;
 
 	switch (message) {
 	case WM_INITDIALOG:
-		iColor = iCurrentColor;
+		iColor = iCurrentColor;				// Default is 1006 (IDC_CHANGEBGSTYLE_RADIO_RED)
 		iFigure = iCurrentFigure;
 
-		CheckRadioButton(hDlg, IDC_SETCIRCLE_RADIO_RED, IDC_SETCIRCLE_RADIO_RANDOM, iColor);
-		CheckRadioButton(hDlg, IDC_SETCIRCLE_RADIO_RECTANGLE, IDC_SETCIRCLE_RADIO_ELIPSE, iFigure);
+		CheckRadioButton(hDlg, IDC_CHANGEBGSTYLE_RADIO_RED, IDC_CHANGEBGSTYLE_RADIO_RANDOM, iColor);
+		CheckRadioButton(hDlg, IDC_CHANGEBGSTYLE_RADIO_RECTANGLE, IDC_CHANGEBGSTYLE_RADIO_ELIPSE, iFigure);
 
-		hCtrlBlock = GetDlgItem(hDlg, IDC_SETCIRCLE_DEMO);
+		hDlgPaintArea = GetDlgItem(hDlg, IDC_CHANGEBGSTYLE_DEMO);	// Get handle of the painting area.
 
-		SetFocus(GetDlgItem(hDlg, iColor));
+		SetFocus(GetDlgItem(hDlg, iColor));	// Set radio focus to red
 		return FALSE;
 
 	case WM_COMMAND:
-		switch (LOWORD(wParam)) {
-		case SETCIRCLE_IDCANCEL:
+		switch (LOWORD(wParam)) {			// LOWORD(wParam) storage the id of which radioBtn was clicked.
+		case CHANGEBGSTYLE_IDCANCEL:
 		case IDCANCEL:
-			EndDialog(hDlg, FALSE);
+			EndDialog(hDlg, FALSE);			// TRUE = The value to be returned to the application from the function that created the dialog box.
 			return TRUE;
 
-		case SETCIRCLE_IDOK:
+		case CHANGEBGSTYLE_IDOK:
 			iCurrentColor = iColor;
 			iCurrentFigure = iFigure;
 			EndDialog(hDlg, TRUE);
 			return TRUE;
-
-		case IDC_SETCIRCLE_RADIO_RED:
-		case IDC_SETCIRCLE_RADIO_GREEN:
-		case IDC_SETCIRCLE_RADIO_BLUE:
-		case IDC_SETCIRCLE_RADIO_RANDOM:
+		
+		case IDC_CHANGEBGSTYLE_RADIO_RANDOM:
+			bRadomSwitch = TRUE;
+		case IDC_CHANGEBGSTYLE_RADIO_RED:
+		case IDC_CHANGEBGSTYLE_RADIO_GREEN:
+		case IDC_CHANGEBGSTYLE_RADIO_BLUE:
 			iColor = LOWORD(wParam);
-			CheckRadioButton(hDlg, IDC_SETCIRCLE_RADIO_RED, IDC_SETCIRCLE_RADIO_RANDOM, LOWORD(wParam));
-			PaintTheBlock(hCtrlBlock, iColor, iFigure);
+			CheckRadioButton(hDlg, IDC_CHANGEBGSTYLE_RADIO_RED, IDC_CHANGEBGSTYLE_RADIO_RANDOM, LOWORD(wParam));
+			PaintDemoArea(hDlgPaintArea, iColor, iFigure, bRadomSwitch);
 			return TRUE;
 
-		case IDC_SETCIRCLE_RADIO_RECTANGLE:
-		case IDC_SETCIRCLE_RADIO_ELIPSE:
+		case IDC_CHANGEBGSTYLE_RADIO_RECTANGLE:
+		case IDC_CHANGEBGSTYLE_RADIO_ELIPSE:
 			iFigure = LOWORD(wParam);
-			CheckRadioButton(hDlg, IDC_SETCIRCLE_RADIO_RECTANGLE, IDC_SETCIRCLE_RADIO_ELIPSE, LOWORD(wParam));
-			PaintTheBlock(hCtrlBlock, iColor, iFigure);
+			CheckRadioButton(hDlg, IDC_CHANGEBGSTYLE_RADIO_RECTANGLE, IDC_CHANGEBGSTYLE_RADIO_ELIPSE, LOWORD(wParam));
+			PaintDemoArea(hDlgPaintArea, iColor, iFigure, FALSE);
 			return TRUE;
 		}
 		break;
 	case WM_PAINT:
-		PaintTheBlock(hCtrlBlock, iColor, iFigure);
+		PaintDemoArea(hDlgPaintArea, iColor, iFigure, FALSE);
 		break;
 	}
 	return FALSE;
 }
 
-
 BOOL CALLBACK AboutDlgProc(HWND hAboutDlgProc, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
-	case WM_INITDIALOG:				// TRUE = SetFocus.
+	case WM_INITDIALOG:				
 		return TRUE;
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
+		case ABOUT_IDDETAIL:
+			MessageBox(hAboutDlgProc, szAboutDeatil, TEXT("About - Detail"), MB_OK);
+			break;
 		case ABOUT_IDOK:
 		case IDCANCEL:				// For ESC key
-			EndDialog(hAboutDlgProc, 0);
+			EndDialog(hAboutDlgProc, FALSE);
 			/*SendMessage(GetParent(hAboutDlgProc), WM_CLOSE, wParam, lParam);		// You can sendMessage to WndProc.*/
 			return TRUE;
 		}
@@ -200,30 +209,34 @@ BOOL CALLBACK AboutDlgProc(HWND hAboutDlgProc, UINT message, WPARAM wParam, LPAR
 	return FALSE;
 }
 
-void PaintWindows(HWND hwnd, int iColor, int iFigure) {
-	static COLORREF crColor[4] = { RGB(0xFF, 0, 0), RGB(0, 0xFF, 0), RGB(0, 0, 0xFF) , RGB(0, 0, 0) };
-	crColor[3] = RGB(rand()%256, rand() % 256, rand() % 256);
+void PaintWindow(HWND hwnd, int iColor, int iFigure, BOOL bRandomSwitch) {
+	static COLORREF crColor[4];
 	HBRUSH hBrush;
 	HDC hdc;
 	RECT rect;
 
 	hdc = GetDC(hwnd);
+	unsigned short arrayCounter = 0;
+	for (unsigned int loopCounter = 0xFF; loopCounter <= 0xFFFFFF; loopCounter <<= 8) { //S Set color table (Red Green Blue)
+		crColor[arrayCounter] = loopCounter;
+		arrayCounter++;
+	}
+	if (bRandomSwitch) crColor[3] = RGB(rand() % 256, rand() % 256, rand() % 256);		// Change color online IDC_CHANGEGBSTYLE_RADIO_RANDOM click
+
 	GetClientRect(hwnd, &rect);
-	hBrush = CreateSolidBrush(crColor[iColor - IDC_SETCIRCLE_RADIO_RED]);
+	hBrush = CreateSolidBrush(crColor[iColor - IDC_CHANGEBGSTYLE_RADIO_RED]);			// IDC_CHANGEBGSTYLE_RADIO_RED is a color id base if Green selected, number will be 1007 - 1006 = 1, it needs to create correct ID number order.
 	hBrush = (HBRUSH)SelectObject(hdc, hBrush);
 
-	if (iFigure == IDC_SETCIRCLE_RADIO_RECTANGLE) {
+	if (iFigure == IDC_CHANGEBGSTYLE_RADIO_RECTANGLE) {									// Draw on the WndProc.
 		Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
-	}
-	else {
-		Ellipse(hdc, rect.left, rect.top, rect.right, rect.bottom);
-	}
+	}else Ellipse(hdc, rect.left, rect.top, rect.right, rect.bottom);
+
 	DeleteObject(SelectObject(hdc, hBrush));
 	ReleaseDC(hwnd, hdc);
 }
 
-void PaintTheBlock(HWND hCtrl, int iColor, int iFigure) {
+void PaintDemoArea(HWND hCtrl, int iColor, int iFigure, BOOL bRandomClick) {
 	InvalidateRect(hCtrl, NULL, TRUE);
 	UpdateWindow(hCtrl);
-	PaintWindows(hCtrl, iColor, iFigure);
+	PaintWindow(hCtrl, iColor, iFigure, bRandomClick);
 }

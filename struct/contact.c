@@ -30,10 +30,13 @@
 ;* 5. Didn't limited data base size.
 ;* 6. Didn't check free() is function correctly or not.
 ;*
-;* Note:
+;* Note				:
 ;* I will add more function in this program: short, search improvement, memory pool, file in/out.
 ;|**********************************************************************;
 */
+// CODE REVIEW: 1.26052019; Please replace scanf_s() with scanf if compiling error.
+// Planed to fix the issue and add new function on 04012019 within the next 28 days. (lst97 26052019)
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h> //exit()
@@ -41,24 +44,24 @@
 #define SPACEBAR 0x0020
 #define cleanChar() while(getchar() != 0x000A)
 
-enum Bool {null, FALSE = 0, TRUE};
+enum Bool { FALSE = 0, TRUE };
 
-struct Contact{
+struct Contact {
 	char fName[16];
 	char lName[16];
 	char email[32];
 	char phone[16];
-	struct Contact *nextContactPtr;
+	struct Contact* nextContactPtr;
 };
 
 void showMenu(void);
-void addContact(struct Contact **, _Bool *, short unsigned int *);
-void userContactInput(struct Contact *, _Bool *, short unsigned int *, _Bool);
-void editContact(struct Contact **, _Bool *, short unsigned int *);
-void deleteContact(struct Contact **, _Bool *, short unsigned int *);
-void searchContact(struct Contact **, _Bool *, short unsigned int *);
-void printContact(struct Contact *, _Bool);
-int exitContact(struct Contact *, short unsigned int contactSize);
+void addContact(struct Contact**, _Bool*, short unsigned int*);
+void userContactInput(struct Contact*, _Bool*, short unsigned int*, _Bool);
+void editContact(struct Contact**, _Bool*, short unsigned int*);
+void deleteContact(struct Contact**, _Bool*, short unsigned int*);
+void searchContact(struct Contact**, _Bool*, short unsigned int*);
+void printContact(struct Contact*, _Bool);
+int exitContact(struct Contact*, short unsigned int contactSize);
 
 _Bool pCOMMAND(void);
 _Bool pDEBUG(void);
@@ -66,32 +69,35 @@ _Bool pEND(void);
 
 _Bool debugSwitch = FALSE;
 int main(void) {
-	struct Contact *contactHead = null;
-	short unsigned int contactSize = null;
-	short unsigned int userCommand = null;
+	struct Contact* contactHead = 0;
+	short unsigned int contactSize = 0;
+	short unsigned int userCommand = 0;
 	_Bool freshFlag = TRUE;
 
 	showMenu();
-	while(TRUE){
-		userCommand = null;
-		scanf("%hu", &userCommand);
-		switch (userCommand){
+	while (TRUE) {
+		userCommand = 0;
+		scanf_s("%hu", &userCommand);
+		switch (userCommand) {
 		case 1:
-			if(freshFlag == TRUE){
+			if (freshFlag == TRUE) {
 				cleanChar();
 				addContact(&contactHead, &freshFlag, &contactSize);
 			}
 			_Bool invalidFlag = FALSE;
-			while(TRUE){
-				if(invalidFlag == FALSE)printf("[Contact] Data/s found, do you wish to add another contact? (y/n)\n");
+			while (TRUE) {
+				if (invalidFlag == FALSE)printf("[Contact] Data/s found, do you wish to add another contact? (y/n)\n");
 				invalidFlag = FALSE;
-				char userYN = null;
-				scanf("%1c", &userYN);
-				if(userYN == 'y'){
+				char userYN = 0;
+				scanf_s("%1c", &userYN, 1);
+				if (userYN == 'y') {
 					cleanChar();
 					addContact(&contactHead, &freshFlag, &contactSize);
-				}else if(userYN == 'n'){break;
-				}else{
+				}
+				else if (userYN == 'n') {
+					break;
+				}
+				else {
 					printf("[Contact] Invalid Input! try again\n");
 					invalidFlag = TRUE;
 				}
@@ -103,7 +109,7 @@ int main(void) {
 		case 3: deleteContact(&contactHead, &freshFlag, &contactSize); showMenu(); continue;
 		case 4: searchContact(&contactHead, &freshFlag, &contactSize); showMenu(); continue;
 		case 5: printContact(contactHead, freshFlag); showMenu(); continue;
-		case 6: if(exitContact(contactHead, contactSize) == 1) goto END; continue;
+		case 6: if (exitContact(contactHead, contactSize) == 1) goto END; continue;
 		}
 	}
 
@@ -114,205 +120,216 @@ END:
 	return 0;
 }
 
-void showMenu(void){
+void showMenu(void) {
 	printf(";|**********************************************************************;\n;*\n"
-			";*\t1.Add contact\t\t\t2.Edit a contact\n;*\n"
-			";*\t3.Delete a contact\t\t4.Search a contact\n;*\n"
-			";*\t5.Print contact\t\t\t6.EXIT!\n;*\n"
-			";|**********************************************************************;\n\n");
+		";*\t1.Add contact\t\t\t2.Edit a contact\n;*\n"
+		";*\t3.Delete a contact\t\t4.Search a contact\n;*\n"
+		";*\t5.Print contact\t\t\t6.EXIT!\n;*\n"
+		";|**********************************************************************;\n\n");
 	printf("[Contact] Please perform an action:\n");
 	return;
 }
 
-void addContact(struct Contact **contactHead, _Bool *freshFlag, short unsigned int *contactSize){
-	struct Contact *newContact;
-	static struct Contact *newContact_Tail;
+void addContact(struct Contact** contactHead, _Bool* freshFlag, short unsigned int* contactSize) {
+	struct Contact* newContact;
+	static struct Contact* newContact_Tail;
 
-	newContact = (struct Contact *)calloc(1, sizeof(struct Contact));
-	if(newContact == null){printf("[Contact] ERROR Fail when allocation memory!\n"); exit(1);}
+	newContact = (struct Contact*)calloc(1, sizeof(struct Contact));
+	if (newContact == 0) { printf("[Contact] ERROR Fail when allocation memory!\n"); exit(1); }
 
 	userContactInput(newContact, freshFlag, contactSize, FALSE);
-	if(*contactHead != null){newContact_Tail->nextContactPtr = newContact;
-	}else *contactHead = newContact;
+	if (*contactHead != 0) {
+		newContact_Tail->nextContactPtr = newContact;
+	}
+	else *contactHead = newContact;
 
 	newContact_Tail = newContact;
 }
 
-void userContactInput(struct Contact *contact, _Bool *freshFlag, short unsigned int *contactSize, _Bool fromEdit){
-	if(fromEdit == TRUE){printf("\n= = = = = = = = Edit Contact [%hu] = = = = = = = =\n", *contactSize +1);
-	}else {printf("\n= = = = = = = = Add Contact [%hu] = = = = = = = =\n", *contactSize +1);}
+void userContactInput(struct Contact* contact, _Bool* freshFlag, short unsigned int* contactSize, _Bool fromEdit) {
+	if (fromEdit == TRUE) {
+		printf("\n= = = = = = = = Edit Contact [%hu] = = = = = = = =\n", *contactSize + 1);
+	}
+	else { printf("\n= = = = = = = = Add Contact [%hu] = = = = = = = =\n", *contactSize + 1); }
 
-	char strValida = null;
-	char sizeCheck = null;
-	char *charPosistionPtr = null;
+	char strValida = 0;
+	char sizeCheck = 0;
+	char* charPosistionPtr = 0;
 
 fname:
 	printf("[Contact] Please enter First Name: (Less than 16 char and only capital allowed)\n");
-	charPosistionPtr = (char *)contact;
-	while(strValida != 0x000A){
-		scanf("%1c", &strValida);
-		if(((strValida < 0x0041 && strValida != 0x000A) && strValida != 0x0020) || strValida > 0x005A){			// Only allow capital letter, ' ', '\n' see ASCII table.
-			charPosistionPtr = (char *)contact;				// Have to relocate pointer if Invalid as I am adding pointer itself.
+	charPosistionPtr = (char*)contact;
+	while (strValida != 0x000A) {
+		scanf_s("%c", &strValida, 1);
+		if (((strValida < 0x0041 && strValida != 0x000A) && strValida != 0x0020) || strValida > 0x005A) {			// Only allow capital letter, ' ', '\n' see ASCII table.
+			charPosistionPtr = (char*)contact;				// Have to relocate pointer if Invalid as I am adding pointer itself.
 			printf("[Contact] Invalid Input! try again\n");
-			memset (contact->fName, null, 16);
+			memset(contact->fName, 0, 16);
 			cleanChar();
-		}else{
-			if(strValida != 0x000A){						// Save letter one by one if valid.
+		}
+		else {
+			if (strValida != 0x000A) {						// Save letter one by one if valid.
 				memset(charPosistionPtr, strValida, 1);
 				charPosistionPtr++;
 				sizeCheck++;
 			}
 		}
 	}
-	if(sizeCheck > 15){
+	if (sizeCheck > 15) {
 		printf("[Contact] Over size! try again\n");
-		memset (contact->fName, null, 16);
+		memset(contact->fName, 0, 16);
 		goto fname;
 	}
 
 	printf("[Contact] Please enter Last Name:\n");
 lname:
-	strValida = null; sizeCheck = null;
-	charPosistionPtr = (char *)contact;
-	while(strValida != 0x000A){
-		scanf("%1c", &strValida);
-		if(((strValida < 0x0041 && strValida != 0x000A) && strValida != 0x0020) || strValida > 0x005A){
-			charPosistionPtr = (char *)contact;
+	strValida = 0; sizeCheck = 0;
+	charPosistionPtr = (char*)contact;
+	while (strValida != 0x000A) {
+		scanf_s("%c", &strValida, 1);
+		if (((strValida < 0x0041 && strValida != 0x000A) && strValida != 0x0020) || strValida > 0x005A) {
+			charPosistionPtr = (char*)contact;
 			printf("[Contact] Invalid Input! try again\n");
-			memset (contact->lName, null, 16);
+			memset(contact->lName, 0, 16);
 			cleanChar();
-		}else{
-			if(strValida != 0x000A){
-				memset(charPosistionPtr +16, strValida, 1);
+		}
+		else {
+			if (strValida != 0x000A) {
+				memset(charPosistionPtr + 16, strValida, 1);
 				charPosistionPtr++;
 				sizeCheck++;
 			}
 		}
 	}
-	if(sizeCheck > 15){
-			printf("[Contact] Over size! try again\n");
-			memset (contact->lName, null, 16);
-			goto lname;
-		}
+	if (sizeCheck > 15) {
+		printf("[Contact] Over size! try again\n");
+		memset(contact->lName, 0, 16);
+		goto lname;
+	}
 
 	printf("[Contact] Please enter E-Mail:\n");
 email:													// I am looking for an email validator, I will try to do it myself first. It contain problem for now.
-	strValida = null; sizeCheck = null;
+	strValida = 0; sizeCheck = 0;
 	_Bool atFlag = FALSE;
-	charPosistionPtr = (char *)contact;
-	while(strValida != 0x000A){
-		scanf("%1c", &strValida);
+	charPosistionPtr = (char*)contact;
+	while (strValida != 0x000A) {
+		scanf_s("%c", &strValida, 1);
 		//Basic validate allow {'a-z', 'A-Z', '0-9', '@', ' ', '\n', '.'}
-		if((strValida == 0x000A) || (strValida == 0x002E) || (strValida > 0x002F && strValida < 0x003A) ||
-				(strValida > 0x003F && strValida < 0x005B) || (strValida > 0x0060 && strValida < 0x007B)){
-			if(strValida == 0x0040) atFlag = TRUE;
-			if(strValida != 0x000A){
-				memset(charPosistionPtr +32, strValida, 1);
+		if ((strValida == 0x000A) || (strValida == 0x002E) || (strValida > 0x002F && strValida < 0x003A) ||
+			(strValida > 0x003F && strValida < 0x005B) || (strValida > 0x0060 && strValida < 0x007B)) {
+			if (strValida == 0x0040) atFlag = TRUE;
+			if (strValida != 0x000A) {
+				memset(charPosistionPtr + 32, strValida, 1);
 				charPosistionPtr++;
 				sizeCheck++;
 			}
-		}else{
-			charPosistionPtr = (char *)contact;
+		}
+		else {
+			charPosistionPtr = (char*)contact;
 			printf("[Contact] Invalid Input! try again\n");
-			memset (contact->email, null, 32);
+			memset(contact->email, 0, 32);
 		}
 	}
-	if(atFlag != TRUE){							// E-Mail must have '@' sign.
+	if (atFlag != TRUE) {							// E-Mail must have '@' sign.
 		printf("[Contact] Invalid Input! try again\n");
-		memset (contact->email, null, 32);
+		memset(contact->email, 0, 32);
 		goto email;
 	}
-	if(sizeCheck > 31){
+	if (sizeCheck > 31) {
 		printf("[Contact] Over size! try again\n");
-		memset (contact->email, null, 32);
+		memset(contact->email, 0, 32);
 		goto email;
 	}
 
 
 	printf("[Contact] Please enter Phone:\n");
 phone:
-	strValida = null;
-	sizeCheck = null;
-	charPosistionPtr = (char *)contact;
-	while(strValida != 0x000A){
-		scanf("%1c", &strValida);
-		if((strValida < 0x003A && strValida > 0x002F) || strValida == 0x000A){			// Allow only number and '\n'
-			if(strValida != 0x000A){
-				memset(charPosistionPtr +64, strValida, 1);
+	strValida = 0;
+	sizeCheck = 0;
+	charPosistionPtr = (char*)contact;
+	while (strValida != 0x000A) {
+		scanf_s("%c", &strValida, 1);
+		if ((strValida < 0x003A && strValida > 0x002F) || strValida == 0x000A) {			// Allow only number and '\n'
+			if (strValida != 0x000A) {
+				memset(charPosistionPtr + 64, strValida, 1);
 				charPosistionPtr++;
 				sizeCheck++;
 			}
-		}else{
-			charPosistionPtr = (char *)contact;
+		}
+		else {
+			charPosistionPtr = (char*)contact;
 			printf("[Contact] Invalid Input! try again\n");
-			memset (contact->phone, null, 16);
+			memset(contact->phone, 0, 16);
 		}
 	}
-	if(sizeCheck > 16){
-			printf("[Contact] Over size! try again\n");
-			memset (contact->phone, null, 16);
-			goto phone;
-		}
+	if (sizeCheck > 16) {
+		printf("[Contact] Over size! try again\n");
+		memset(contact->phone, 0, 16);
+		goto phone;
+	}
 
-	if(fromEdit == TRUE){printf("\n= = = = = = = = Edit Contact END = = = = = = = =\n");
-	}else {printf("\n= = = = = = = = Add Contact END = = = = = = = =\n");}
+	if (fromEdit == TRUE) {
+		printf("\n= = = = = = = = Edit Contact END = = = = = = = =\n");
+	}
+	else { printf("\n= = = = = = = = Add Contact END = = = = = = = =\n"); }
 
 	*freshFlag = FALSE;					// Flag will FALSE if contain data or *contactSize > 0.
-	*contactSize = *contactSize +1;
+	*contactSize = *contactSize + 1;
 	cleanChar();
 	return;
 }
-void editContact(struct Contact **contact, _Bool *freshFlag, short unsigned int *contactSize){
-	if(*freshFlag == TRUE){printf("[Contact] Data base empty! please add contact first\n");return;}
+void editContact(struct Contact** contact, _Bool* freshFlag, short unsigned int* contactSize) {
+	if (*freshFlag == TRUE) { printf("[Contact] Data base empty! please add contact first\n"); return; }
 
-	struct Contact *contactTemp = null;
-	short unsigned int userInput = null;
+	struct Contact* contactTemp = 0;
+	short unsigned int userInput = 0;
 
 	contactTemp = *contact;
 	printContact(*contact, *freshFlag);
-	printf("[CONTACT] Which contact you want to edit?\n" );
-	while(TRUE){
-		if(scanf("%1hu", &userInput) != 1 || userInput == 0 || userInput > *contactSize){
+	printf("[CONTACT] Which contact you want to edit?\n");
+	while (TRUE) {
+		if (scanf_s("%1hu", &userInput) != 1 || userInput == 0 || userInput > * contactSize) {
 			printf("[CONTACT] Over size! try again\n");
 			cleanChar();
 			continue;
 		}
-			short unsigned int accumla = 1;
-			while(accumla == userInput -1){					// Tail insertion, learn more on YouTube: https://www.youtube.com/watch?v=NobHlGUjV3g&index=3&list=PL2_aWCzGMAwI3W_JlcBbtYTwiQSsOTa6P
-				contactTemp = contactTemp->nextContactPtr;
-				accumla++;
-			}
-			userInput--;
-			cleanChar();
-			userContactInput(contactTemp, freshFlag, &userInput, TRUE);
-			break;
+		short unsigned int accumla = 1;
+		while (accumla == userInput - 1) {					// Tail insertion, learn more on YouTube: https://www.youtube.com/watch?v=NobHlGUjV3g&index=3&list=PL2_aWCzGMAwI3W_JlcBbtYTwiQSsOTa6P
+			contactTemp = contactTemp->nextContactPtr;
+			accumla++;
+		}
+		userInput--;
+		cleanChar();
+		userContactInput(contactTemp, freshFlag, &userInput, TRUE);
+		break;
 	}
 }
 
-void deleteContact(struct Contact **contactHead, _Bool *freshFlag, short unsigned int *contactSize){
-	if(*freshFlag == TRUE){printf("[Contact] Data base empty! please add contact first\n");return;}
+void deleteContact(struct Contact** contactHead, _Bool* freshFlag, short unsigned int* contactSize) {
+	if (*freshFlag == TRUE) { printf("[Contact] Data base empty! please add contact first\n"); return; }
 
-	struct Contact *contactTemp = null;
-	struct Contact *contactDelete_Temp = null;
-	struct Contact *contactBefore = null;
-	short unsigned int userInput = null;
+	struct Contact* contactTemp = 0;
+	struct Contact* contactDelete_Temp = 0;
+	struct Contact* contactBefore = 0;
+	short unsigned int userInput = 0;
 
 	contactTemp = *contactHead;
 	printContact(*contactHead, *freshFlag);
-	printf("[CONTACT] Which contact you want to delete?\n" );
-	while(TRUE){
-		if(scanf("%1hu", &userInput) != 1 || userInput == 0 || userInput > *contactSize){
+	printf("[CONTACT] Which contact you want to delete?\n");
+	while (TRUE) {
+		if (scanf_s("%1hu", &userInput) != 1 || userInput == 0 || userInput > * contactSize) {
 			printf("[CONTACT] Invalid Input! try again\n");
 			cleanChar();
 			continue;
 		}
 		// Have not check if free() function correctly or not.
-		if(*contactSize == 1){
+		if (*contactSize == 1) {
 			*contactHead = contactTemp->nextContactPtr;
 			free(*contactHead);
-		}else{
+		}
+		else {
 			short unsigned int accumla = 1;
-			while(accumla < userInput){
+			while (accumla < userInput) {
 				contactBefore = contactTemp;				// Have to remember the address of the before contact.
 				contactDelete_Temp = contactTemp->nextContactPtr;
 				contactTemp = contactTemp->nextContactPtr;
@@ -322,48 +339,50 @@ void deleteContact(struct Contact **contactHead, _Bool *freshFlag, short unsigne
 			free(contactDelete_Temp);
 		}
 		cleanChar();
-		*contactSize = *contactSize -1;
-		if(*contactSize == 0)*freshFlag = TRUE;
+		*contactSize = *contactSize - 1;
+		if (*contactSize == 0)* freshFlag = TRUE;
 		break;
 	}
 }
 
-void searchContact(struct Contact **contactHead, _Bool *freshFlag, short unsigned int *contactSize){
-	if(*freshFlag == TRUE){printf("[Contact] Data base empty! please add contact first\n");return;}
-	if(*contactSize < 2){printf("[Contact] Too few data for search! use Print contact instead\n");return;}
+void searchContact(struct Contact** contactHead, _Bool* freshFlag, short unsigned int* contactSize) {
+	if (*freshFlag == TRUE) { printf("[Contact] Data base empty! please add contact first\n"); return; }
+	if (*contactSize < 2) { printf("[Contact] Too few data for search! use Print contact instead\n"); return; }
 
-	struct Contact *contactTemp = null;
-	char accumla = null;
-	char userInput = null;
+	struct Contact* contactTemp = 0;
+	char accumla = 0;
+	char userInput = 0;
 	char charTempArray[16];
 	contactTemp = *contactHead;
 
 	printf("= = = = = = = = Search Contact = = = = = = = =\n");
-	printf("[CONTACT] Please enter First Name for search:\n" );
-	memset(charTempArray, null, 16);		// Array have to be clean, search trash if did not
+	printf("[CONTACT] Please enter First Name for search:\n");
+	memset(charTempArray, 0, 16);		// Array have to be clean, search trash if did not
 	cleanChar();
-	while(TRUE){
-		while(TRUE){
-			scanf("%1c", &userInput);
-			if(((userInput < 0x0041 && userInput != 0x000A) && userInput != 0x0020) || userInput > 0x005A){
+	while (TRUE) {
+		while (TRUE) {
+			scanf_s("%c", &userInput, 1);
+			if (((userInput < 0x0041 && userInput != 0x000A) && userInput != 0x0020) || userInput > 0x005A) {
 				printf("[CONTACT] Invalid Input! try again\n");
 				cleanChar();
-				memset(charTempArray, null, 16);
-				accumla = null;
+				memset(charTempArray, 0, 16);
+				accumla = 0;
 				continue;
-			}else{
-				if(userInput != 0x000A){						// Save to array and ready for compare if Input valid.
+			}
+			else {
+				if (userInput != 0x000A) {						// Save to array and ready for compare if Input valid.
 					charTempArray[accumla] = userInput;			// Unknown error, program works OK. (array subscript has type ‘char’ [-Wchar-subscripts]) eclipse 4.8.0
 					accumla++;
-				}else break;
+				}
+				else break;
 			}
 		}
 
-		char accumla = null;
+		char accumla = 0;
 		_Bool foundFlag = FALSE;
-		while(accumla < *contactSize -1){
-			if(!strcmp(contactTemp->fName, charTempArray)){
-				printf("\n= = = = = = = = Print Contact [%d] = = = = = = = =\n", accumla +1);
+		while (accumla < *contactSize - 1) {
+			if (!strcmp(contactTemp->fName, charTempArray)) {
+				printf("\n= = = = = = = = Print Contact [%d] = = = = = = = =\n", accumla + 1);
 				printf("First Name:\t\t%s\n", contactTemp->fName);
 				printf("Last Name:\t\t%s\n", contactTemp->lName);
 				printf("E-Mail:\t\t\t%s\n", contactTemp->email);
@@ -373,7 +392,7 @@ void searchContact(struct Contact **contactHead, _Bool *freshFlag, short unsigne
 			}
 			contactTemp = contactTemp->nextContactPtr;
 		}
-		if(foundFlag == FALSE)printf("[CONTACT] Nothing Found!\n");
+		if (foundFlag == FALSE)printf("[CONTACT] Nothing Found!\n");
 		printf("\n= = = = = = = = [%hu] Contact FOUND = = = = = = = =\n", accumla);
 		printf("= = = = = = = = Search Contact END = = = = = = = =\n");
 		break;
@@ -381,13 +400,13 @@ void searchContact(struct Contact **contactHead, _Bool *freshFlag, short unsigne
 
 }
 
-void printContact(struct Contact *contactHead, _Bool freshFlag){
-	struct Contact *contactTemp;
+void printContact(struct Contact* contactHead, _Bool freshFlag) {
+	struct Contact* contactTemp;
 	char accumla = 1;
 
 	// Linked list better explained on YouTube.
 	contactTemp = contactHead;
-	while(contactTemp != null){
+	while (contactTemp != 0) {
 		printf("\n= = = = = = = = Print Contact [%d] = = = = = = = =\n", accumla);
 		printf("First Name:\t\t%s\n", contactTemp->fName);
 		printf("Last Name:\t\t%s\n", contactTemp->lName);
@@ -396,73 +415,75 @@ void printContact(struct Contact *contactHead, _Bool freshFlag){
 		contactTemp = contactTemp->nextContactPtr;
 		accumla++;
 	}
-	if(freshFlag == TRUE){
+	if (freshFlag == TRUE) {
 		printf("Data base EMPTY!\n");
 	}
 	printf("\n= = = = = = = = Print Contact END = = = = = = = =\n");
 	return;
 }
 
-int exitContact(struct Contact *contactHead, short unsigned int contactSize){
-	struct Contact *contactTemp = null;
-	struct Contact *contactTemp_Temp = null;
+int exitContact(struct Contact* contactHead, short unsigned int contactSize) {
+	struct Contact* contactTemp = 0;
+	struct Contact* contactTemp_Temp = 0;
 
 	printf("[CONTACT] Exit will wipe all the data, you sure? (y/n)\n");
 	contactTemp = contactHead;
 
 	// Have not check if free() function correctly or not.
-	while(TRUE){
-		char userYN = null;
+	while (TRUE) {
+		char userYN = 0;
 		cleanChar();
-		scanf("%1c", &userYN);
-		if(userYN == 'y'){
-			if(contactSize == 0){return 1;}
-			else if(contactSize == 1){
+		scanf_s("%c", &userYN, 1);
+		if (userYN == 'y') {
+			if (contactSize == 0) { return 1; }
+			else if (contactSize == 1) {
 				contactHead = contactTemp->nextContactPtr;
 				free(contactHead);
 				return 1;
-			}else{
+			}
+			else {
 				contactTemp = contactHead;
-				while(contactTemp->nextContactPtr != null){
+				while (contactTemp->nextContactPtr != 0) {
 					contactTemp = contactTemp->nextContactPtr;
 					contactTemp_Temp = contactTemp;
 					free(contactTemp_Temp);
 					return 1;
 				}
 			}
-		}else if(userYN == 'n'){return 0;}
+		}
+		else if (userYN == 'n') { return 0; }
 		else printf("[Contact] Invalid Input! try again\n");
 
 	}
 }
 
-_Bool pCOMMAND(void){
-	char userCommand = null;
-	char Validator = null;
+_Bool pCOMMAND(void) {
+	char userCommand = 0;
+	char Validator = 0;
 	char loopSwitch = TRUE;
 
 	printf("[*SHELL] Please enter a command:\n");
-	while(loopSwitch){
+	while (loopSwitch) {
 		loopSwitch = FALSE;
-		userCommand = null;
-		Validator = null;
-		scanf("%c%c", &userCommand, &Validator);
-		if(Validator == 0x000A){
-			switch(userCommand){
+		userCommand = 0;
+		Validator = 0;
+		// Looking for better way to validate the input. (lst97 26052019)
+		scanf_s("%c%c", &userCommand, &Validator);
+		if (Validator == 0x000A) {
+			switch (userCommand) {
 			case 'q': pEND(); continue;
 			case 'd': pDEBUG(); loopSwitch = TRUE; continue;
-			case 'c': CALC(); break;
-			case 's': QUICKSHORT(); break;
 			default: printf("%c: is not a command!\n", userCommand); loopSwitch = TRUE; continue;
 			}
-			loopSwitch = TRUE;printf("[*SHELL] Please enter a command:\n");if(getchar() != 0x000A) cleanChar();continue;
-		}else{
+			loopSwitch = TRUE; printf("[*SHELL] Please enter a command:\n"); if (getchar() != 0x000A) cleanChar(); continue;
+		}
+		else {
 			printf("%c%c", userCommand, Validator);
-			while(Validator != 0x0020 && Validator != 0x000A){
-				scanf("%c", &Validator);
-				if(Validator != 0x0020 && Validator != 0x000A) printf("%c", Validator);
+			while (Validator != 0x0020 && Validator != 0x000A) {
+				scanf_s("%c", &Validator, 1);
+				if (Validator != 0x0020 && Validator != 0x000A) printf("%c", Validator);
 			}
-			if(getchar() != 0x000A) cleanChar();
+			if (getchar() != 0x000A) cleanChar();
 			printf(": is not a command!\n");
 			loopSwitch = TRUE;
 		}
@@ -470,14 +491,14 @@ _Bool pCOMMAND(void){
 	return 0;
 }
 
-_Bool pDEBUG(void){
-	if(debugSwitch == TRUE)debugSwitch = FALSE;
+_Bool pDEBUG(void) {
+	if (debugSwitch == TRUE)debugSwitch = FALSE;
 	else debugSwitch = TRUE;
 	printf("[*SHELL] Debug Mode = %u\n", debugSwitch);
 	return 0;
 }
 
-_Bool pEND(void){
+_Bool pEND(void) {
 	printf("Program terminated normally!");
 	exit(0);
 	return 0;

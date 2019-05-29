@@ -42,5 +42,6 @@ My C language run-down
 </tr>
 </tbody>
 </table>
-<p><strong>SYSTEM:&nbsp;</strong>Linux lst97-Aspire-E5-573 4.18.0-16-generic #17-Ubuntu SMP Fri Feb 8 00:06:57 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux</p>
+<p><strong>SYSTEM:&nbsp;</strong>Linux lst97 4.19.0-1-amd64 #1 SMP Debian 4.19.5-2~mx17+1 (2018-12-12) x86_64 GNU/Linux
+</p>
 <p><em>Also, I will upload some questions that I interested in.</em></p>

@@ -18,15 +18,17 @@
 ;*
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 04062019    lst97       1      First release
+;* 05062019    lst97       2      Add Josephus Problem & Password Generator using CLL
 ;*
 ;* Known Issue       :
-;* No input validate and exception handle
+;* Missing input validate and exception handle
 ;*
 ;|**********************************************************************;
 */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define LENGTH 10
 
@@ -43,11 +45,12 @@ void fnCLL_Append(CLL *, int);
 CLL* fnCLL_Delete(CLL *, int);
 void fnCLL_Value(CLL *, int);
 void fnCLL_Free(CLL*);
-
+void fnJosephusProblem(void);
+void fnPasswordGenerator(void);
 int main(void) {
 	int iUserInput = 0;
 	CLL* pHead = 0;
-	printf("= = = = = Menu = = = = =\n1. Create Linked List\n2. Insert Number\n3. Delete Number\n4. Index of the value\n5. Print Linked List\n0. Exit\n\n");
+	printf("= = = = = Menu = = = = =\n1. Create Linked List\n2. Insert Number\n3. Delete Number\n4. Index of the value\n5. Print Linked List\n6. Josephus Problem\n7. Password Generator\n0. Exit\n\n");
 	while (1) {
 		printf("@Circular_Linked_List>");
 		scanf_s("%d", &iUserInput);
@@ -80,6 +83,12 @@ int main(void) {
 			continue;
 		case 5:
 			fnCLL_Print(pHead);
+			continue;
+		case 6:
+			fnJosephusProblem();
+			continue;
+		case 7:
+			fnPasswordGenerator();
 			continue;
 		default:
 			printf("Invalide Input!\n\n");
@@ -187,4 +196,127 @@ void fnCLL_Free(CLL* pCLL) {
 	}
 	free(pCLL);
 	printf("Freeing the heap - SUCCESS!\n\n");
+}
+
+void fnJosephusProblem(void) {
+	struct JosephusProblem {
+		int iNumber;
+		struct JosephusProblem* pNext;
+	};
+	typedef struct JosephusProblem JP;
+
+	JP* pJP = 0, *pTempJP = 0, *pJP_Head = 0;
+
+	int iUserInput = 0, iCounter = 0, iCounter_Lucky = 1;
+	printf("How many people:\n");
+	scanf_s("%d", &iUserInput);
+	iCounter = iUserInput;
+
+	for (int iLoop = 1; iLoop <= iUserInput; iLoop++) {
+		pJP = (JP*)malloc(sizeof(JP));
+		if (iLoop == 1) {
+			pJP_Head = pJP;
+			pJP->iNumber = iLoop;
+			pJP->pNext = pJP_Head;
+			pTempJP = pJP;
+			continue;
+		}
+		pTempJP->pNext = pJP;
+		pJP->iNumber = iLoop;
+		pJP->pNext = pJP_Head;
+		pTempJP = pJP;
+	}
+
+	pJP = pJP_Head;
+	while (iCounter != 1){
+		if (iCounter_Lucky == 3) {
+			if (pJP->pNext == pJP_Head) {
+				pTempJP->pNext = pJP_Head;
+			}
+			else if (pJP == pJP_Head) {
+				pJP_Head = pJP->pNext;
+				pTempJP->pNext = pJP_Head;
+			}
+			else {
+				pTempJP->pNext = pJP->pNext;
+			}
+			printf("[%2d]->", pJP->iNumber);
+			free(pJP);
+			iCounter_Lucky = 1;
+			iCounter--;
+			pJP = pTempJP->pNext;
+			continue;
+		}
+		pTempJP = pJP;
+		pJP = pJP->pNext;
+		iCounter_Lucky++;
+	}
+	printf("[%2d]\n\n", pJP->iNumber);
+	free(pJP);
+}
+
+void fnPasswordGenerator(void) {
+	struct PasswordGenerator {
+		int iNumber;
+		struct PasswordGenerator* pNext;
+	};
+	typedef struct PasswordGenerator PG;
+
+	PG* pPG = 0, *pTempPG = 0, *pPG_Head = 0;
+
+	int iUserInput = 0, iCounter = 0, iCounter_Lucky = 1;
+	printf("Length:\n");
+	scanf_s("%d", &iUserInput);
+	iCounter = iUserInput;
+
+	srand((unsigned int)time(0));
+	for (int iLoop = 1; iLoop <= iUserInput; iLoop++) {
+		pPG = (PG*)malloc(sizeof(PG));
+		if (iLoop == 1) {
+			pPG_Head = pPG;
+			pPG->iNumber = (rand() % 91) + 35;
+			pPG->pNext = pPG_Head;
+			pTempPG = pPG;
+			continue;
+		}
+		pTempPG->pNext = pPG;
+		pPG->iNumber = (rand() % 91) + 35;
+		pPG->pNext = pPG_Head;
+		pTempPG = pPG;
+	}
+
+	pPG = pPG_Head;
+	iCounter_Lucky = pPG->iNumber;
+	while (iCounter != 1) {
+		if (iCounter_Lucky == 1) {
+			if (pPG->pNext->pNext == pPG_Head) {
+				iCounter_Lucky = pPG->pNext->iNumber;
+				printf("%c", iCounter_Lucky);
+				free(pPG->pNext);
+				pPG->pNext = pPG_Head;
+				iCounter--;
+				continue;
+			}
+			else if (pPG->pNext == pPG_Head) {
+				iCounter_Lucky = pPG_Head->iNumber;
+				printf("%c", iCounter_Lucky);
+				pPG_Head = pPG_Head->pNext;
+				free(pPG->pNext);
+				pPG->pNext = pPG_Head;
+				iCounter--;
+				continue;
+			}
+			pTempPG = pPG->pNext;
+			pPG->pNext = pPG->pNext->pNext;
+			iCounter_Lucky = pTempPG->iNumber;
+			printf("%c", iCounter_Lucky);
+			free(pTempPG);
+			iCounter--;
+			continue;
+		}
+		pPG = pPG->pNext;
+		iCounter_Lucky--;
+	}
+	printf("%c\n\n", pPG->iNumber);
+	free(pPG);
 }

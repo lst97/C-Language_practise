@@ -14,34 +14,28 @@
 </tr>
 <tr>
 <td style="width: 319.883px;">What every programmer should know about memory</td>
-<td style="width: 450.117px;">
-<p><a href="https://lwn.net/Articles/250967/">https://lwn.net/Articles/250967/</a></p>
-</td>
+<td style="width: 450.117px;"><a href="https://lwn.net/Articles/250967/">https://lwn.net/Articles/250967/</a></td>
 </tr>
 <tr>
 <td style="width: 319.883px;">Think-OS</td>
-<td style="width: 450.117px;">
-<p><a href="http://greenteapress.com/thinkos/thinkos.pdf">http://greenteapress.com/thinkos/thinkos.pdf</a></p>
-</td>
+<td style="width: 450.117px;"><a href="http://greenteapress.com/thinkos/thinkos.pdf">http://greenteapress.com/thinkos/thinkos.pdf</a></td>
 </tr>
 </tbody>
 </table>
 <p><strong>VIDEO:</strong></p>
-<table style="width: 768px;">
+<table style="width: 695px;">
 <tbody>
 <tr>
-<td style="width: 319.883px;">【C语言】《带你学C带你飞》（小甲鱼）</td>
-<td style="width: 450.117px;"><a href="https://www.bilibili.com/video/av27744141/?p=3">https://www.bilibili.com/video/av27744141/</a></td>
+<td style="width: 414px;">《带你学C带你飞》（小甲鱼）</td>
+<td style="width: 298px;"><a href="https://www.bilibili.com/video/av27744141/?p=3">https://www.bilibili.com/video/av27744141/</a></td>
 </tr>
 <tr>
-<td style="width: 319.883px;">【C语言】Windows程序设计 (小甲鱼)</td>
-<td style="width: 450.117px;"><a href="https://www.bilibili.com/video/av10786783/">https://www.bilibili.com/video/av10786783/</a></td>
+<td style="width: 414px;">Windows程序设计 (小甲鱼)</td>
+<td style="width: 298px;"><a href="https://www.bilibili.com/video/av10786783/">https://www.bilibili.com/video/av10786783/</a></td>
 </tr>
 <tr>
-<td style="width: 319.883px;">【C语言】数据结构与算法 (小甲鱼)</td>
-<td style="width: 450.117px;">
-<p><a href="https://www.youtube.com/watch?v=hHIaKyExQsA&amp;list=PLuRm_QtoJ4J-Ld1BPZ7F2VLfNgfgjpj17">https://www.youtube.com/watch?v=hHIaKyExQsA&amp;list=PLuRm_QtoJ4J-Ld1BPZ7F2VLfNgfgjpj17</a></p>
-</td>
+<td style="width: 414px;">数据结构与算法 (小甲鱼)</td>
+<td style="width: 298px;"><a href="https://www.youtube.com/watch?v=hHIaKyExQsA&amp;list=PLuRm_QtoJ4J-Ld1BPZ7F2VLfNgfgjpj17">https://www.youtube.com/watch?v=hHIaKyExQsA&amp;list=PLuRm_QtoJ4J-Ld1BPZ7F2VLfNgfgjpj17</a></td>
 </tr>
 </tbody>
 </table>
@@ -49,9 +43,9 @@
 <table style="width: 768px;">
 <tbody>
 <tr>
-<td style="width: 319.883px;">GCC: (Debian 6.3.0-18+deb9u1) 6.3.0 20170516"</td>
+<td style="width: 319.883px;">GCC: (Debian 6.3.0-18+deb9u1) 6.3.0 20170516</td>
 <td style="width: 450.117px;">
-<p>&nbsp;<a href="https://gcc.gnu.org/">https://gcc.gnu.org/</a></p>
+<a href="https://gcc.gnu.org/">https://gcc.gnu.org/</a>
 </td>
 </tr>
 <tr>

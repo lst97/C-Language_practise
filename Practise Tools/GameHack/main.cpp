@@ -17,6 +17,7 @@
 ;* Revision History  :
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 18102020    lst97       1      First release
+;* 19102020    lst97       2      Add newsection Function
 ;*
 ;* Known Issue       :
 ;*
@@ -30,22 +31,40 @@
 
 int main() {
 	// PE Tool Logic
-	PETool* pPetool = PETool_new("C_Debug.exe");
-
+	printf("[4] File & Image buffer\n");
+	PETool* pPetool = PETool_new("C:\\Users\\DEBUG\\Desktop\\C_Debug.exe");
+	if (pPetool == NULL) {
+		printf("File not found / Heap Init FAILE...\n\n");
+		getchar();
+		return 0;
+	}
 	FBuffer* pFileBuffer = NULL;
 	unsigned int memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
 
 	if (pPetool->validator.filecmp(pFileBuffer)) {
-		printf("Compress FAILE...\n\n");
+		printf("Compress FAIL...\n\n");
 		getchar();
 		return 0;
 	}
-	printf("Compress PASS...\n\n");
+	printf("Compress PASS...\n");
 
 	if (pPetool->fexport(pFileBuffer, "C_Debug (cpy).exe", memory_size, 0) == -1) {
-		printf("File already exist!");
-		getchar();
-		return 0;
+		printf("%s already exist!\n", "C_Debug (cpy).exe");
+	}
+	printf("Create SUCCESS!\n\n");
+	free(pFileBuffer);
+
+	printf("[5] Insert section\n");
+	char bcode[] = { 0x12, 0x13 };
+	if (pPetool->file.newsection(".inject", bcode, 2, EXE_CHARACTERISTIC) != -1) {
+		printf("Inject PASS...\n");
+
+		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
+		if (pPetool->fexport(pFileBuffer, "C_Debug (injected).exe", memory_size, 0) == -1) {
+			printf("%s already exist!\n", "C_Debug (injected).exe");
+		}
+	} else {
+		printf("Inject FAIL!\n");
 	}
 	printf("Create SUCCESS!\n\n");
 	free(pFileBuffer);

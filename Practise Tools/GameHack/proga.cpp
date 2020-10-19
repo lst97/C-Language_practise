@@ -42,7 +42,7 @@ uintptr_t GetModuleBaseAddress(DWORD progId, const wchar_t* moduleName) {
 
 uintptr_t FindDMA(HANDLE hProg, uintptr_t ptr, std::vector<unsigned int> offset) {
 	uintptr_t addr = ptr;
-	for (unsigned int i = 0; i < offset.size(); ++i) {
+	for (unsigned int i = 1; i <= offset.size(); i++) {
 		printf("D-addr: %08X\n", addr);
 		ReadProcessMemory(hProg, (BYTE*)addr, &addr, sizeof(addr), 0);
 		addr += offset[i];

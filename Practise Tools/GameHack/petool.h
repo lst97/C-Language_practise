@@ -10,8 +10,11 @@
 #define DWORD unsigned int
 #endif // !_WINDOWS_
 
+// size
 #define SECTION_SIZE 0x28
 #define OPTHEADER_SIZE 0x60
+#define DOSH_SIZE 0x40
+#define STUBNECESSARY_SIZE 0x40
 
 // PE Header Offset
 #define SECTIONNUM_OFFSET 0x06
@@ -107,6 +110,7 @@ int fwrite(unsigned int offset, unsigned int size);
 unsigned int FoaToRva(unsigned int foa_addr);
 int newsection(const char* section_name, char* bcode, unsigned int bcode_size, unsigned int characteristics);
 int inject(const char* section_name, char* bcode);
+unsigned int falignmentcalc(unsigned int size);
 struct FileObj {
 	Header* pHeader;
 	FBuffer* pBuffer;
@@ -116,11 +120,13 @@ struct FileObj {
 	int (*inject)(const char*, char*);
 	int (*write)(unsigned int, unsigned int);
 	unsigned int (*foa_rva)(unsigned int);
+	unsigned int (*alignmentcalc)(unsigned int);
 };
 
 int iwrite(unsigned int offset, unsigned int size);
 unsigned int icompress(unsigned int* ptr);
 unsigned int RvaToFoa(unsigned int rva_addr);
+unsigned int ialignmentcalc(unsigned int size);
 struct ImageObj {
 	Header* pHeader;
 	IBuffer* pBuffer;
@@ -128,6 +134,7 @@ struct ImageObj {
 	int (*write)(unsigned int, unsigned int);
 	unsigned int (*rva_foa)(unsigned int);
 	unsigned int (*compress)(unsigned int*);
+	unsigned int (*alignmentcalc)(unsigned int);
 };
 
 bool ispe();
@@ -142,18 +149,19 @@ struct Validator {
 };
 
 // flags: overwrite(0); return: -1 (file exit)
-int fexport(FBuffer* pBuffer, const char* filename, unsigned int size, unsigned int flags);
+int fexport(FBuffer* pBuffer, char* filename, unsigned int size, unsigned int flags);
 struct PETool {
-	const char* pFilename;
-	int (*fexport)(FBuffer*, const char*, unsigned int, unsigned int);
+	char* pFilename;
+	int (*fexport)(FBuffer*, char*, unsigned int, unsigned int);
+	int (*pefree)(PETool*);
 	Header* pHeader;
 	Validator validator;
 	FileObj file;
 	ImageObj image;
-
 };
+int PETool_free(PETool* pPetool);
 
-PETool* PETool_new(const char* filename);
+PETool* PETool_new(char* filename);
 Header* Header_new();
 Validator Validator_new();
 FileObj File_new();

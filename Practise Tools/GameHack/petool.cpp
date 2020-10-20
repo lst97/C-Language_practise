@@ -3,6 +3,22 @@
 PETool* g_pPETool;
 
 //
+// PE Tool Function
+//
+int PETool_free(PETool* pPetool) {
+	free(g_pPETool->pHeader->pBuffer);
+	free(g_pPETool->pHeader->pOptheader);
+	free(g_pPETool->pHeader);
+
+	free(g_pPETool->file.pBuffer);
+
+	free(g_pPETool->image.pBuffer);
+
+	free(pPetool);
+	return 0;
+}
+
+//
 // Validate Function Declare
 //
 bool ispe() {
@@ -123,6 +139,10 @@ int hrefresh() {
 FBuffer* fcreate() {
 	unsigned int file_size = g_pPETool->pHeader->file_size;
 
+	if (g_pPETool->file.pBuffer != (FBuffer*)UNINIT_HEAP) {
+		free(g_pPETool->file.pBuffer);
+	}
+
 	FBuffer* pBuffer = (FBuffer*)malloc(file_size);
 	if (pBuffer == NULL) {
 		return pBuffer;
@@ -144,13 +164,41 @@ int fwrite(unsigned int offset, unsigned int size) {
 	return 0;
 }
 
+// this function hidden from struct
+int shiftnew() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pBuffer = g_pPETool->file.pBuffer;
+	*(unsigned int*)(pBuffer + IFANEW_OFFSET) = DOSH_SIZE + STUBNECESSARY_SIZE;
+
+	memcpy(pBuffer + DOSH_SIZE + STUBNECESSARY_SIZE, pBuffer + pHeader->e_lfanew, pHeader->SizeOfHeaders - pHeader->e_lfanew);
+	unsigned int end_offset = pHeader->sectionTables_offset + SECTION_SIZE * pHeader->NumberOfSection;
+	memset(pBuffer + end_offset - (pHeader->e_lfanew - DOSH_SIZE - STUBNECESSARY_SIZE), 0, pHeader->e_lfanew - DOSH_SIZE - STUBNECESSARY_SIZE);
+
+	if (!g_pPETool->pHeader->refresh()) {
+		return -1;
+	}
+
+	return 0;
+}
+
 // return 0: success; -1 faile
 int newsection(const char* section_name, char* bcode, unsigned int bcode_size, unsigned int characteristics) {
 	// Calculate if have enough size.
 	Header* pHeader = g_pPETool->pHeader;
-	int remain_size = pHeader->SizeOfHeaders - pHeader->sectionTables_offset - SECTION_SIZE * pHeader->NumberOfSection;
-	if (remain_size < 0x50) {
-		return -1;
+
+	unsigned int total = 0;
+	unsigned int headend_offset = pHeader->sectionTables_offset + SECTION_SIZE * pHeader->NumberOfSection;
+	for (int fecx = 0; fecx < 0x50; fecx++) {
+		total += *(pHeader->pBuffer + headend_offset + fecx);
+	}
+	if (total != 0) {
+		// Method 2
+		unsigned int dosstub_size = g_pPETool->pHeader->e_lfanew - DOSH_SIZE;
+		if (dosstub_size > 0x50) {
+			shiftnew();
+		} else {
+			return -1;
+		}
 	}
 
 	// assign value for the new section table.
@@ -162,33 +210,34 @@ int newsection(const char* section_name, char* bcode, unsigned int bcode_size, u
 	memcpy(&sheader.Name, section_name, 0x8);
 	
 	// new section algo
-	FBuffer* pBuffer = g_pPETool->file.pBuffer;
-	*(short*)(pBuffer + pHeader->e_lfanew + SECTIONNUM_OFFSET) += 1;
+	HBuffer* pHBuffer = pHeader->pBuffer;
+	*(short*)(pHBuffer + pHeader->e_lfanew + SECTIONNUM_OFFSET) += 1;
 
 	sheader.PointerToRawData = pHeader->file_size;
 	sheader.VirtualAddress = pHeader->SizeOfImage;
-	unsigned int remainder = bcode_size / pHeader->pOptheader->FileAlignment + 1;
-	sheader.SizeOfRawData = pHeader->pOptheader->FileAlignment * remainder;
+	sheader.SizeOfRawData = g_pPETool->file.alignmentcalc(bcode_size);
 	sheader.Misc.VirtualSize = sheader.SizeOfRawData;
 	sheader.Characteristics = characteristics;
 
-	remainder = sheader.Misc.VirtualSize / pHeader->pOptheader->SectionAlignment + 1;
-	*(unsigned int*)(pBuffer + pHeader->e_lfanew + OPTH_OFFSET + IMAGESIZE_OFFSET) += pHeader->pOptheader->SectionAlignment * remainder;
+	*(unsigned int*)(pHBuffer + pHeader->e_lfanew + OPTH_OFFSET + IMAGESIZE_OFFSET) += g_pPETool->image.alignmentcalc(bcode_size);
 
-	FBuffer* pBuffer_new = (FBuffer*)calloc(sheader.PointerToRawData + pHeader->pOptheader->FileAlignment * remainder, 1);
-	memcpy(pBuffer_new + sheader.PointerToRawData, bcode, bcode_size);
-	memcpy(pBuffer_new, pBuffer, pHeader->file_size);
-	memcpy(pBuffer_new + pHeader->sectionTables_offset + SECTION_SIZE * pHeader->NumberOfSection, &sheader, SECTION_SIZE);
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+	FBuffer* newpFBuffer = (FBuffer*)calloc(sheader.PointerToRawData + g_pPETool->file.alignmentcalc(bcode_size) , 1);
+	memcpy(newpFBuffer + sheader.PointerToRawData, bcode, bcode_size); // append injected code
+	memcpy(newpFBuffer, pFBuffer, pHeader->file_size); // original to new
+	memcpy(newpFBuffer, pHBuffer, pHeader->SizeOfHeaders); // 
+	memcpy(newpFBuffer + pHeader->sectionTables_offset + SECTION_SIZE * pHeader->NumberOfSection, &sheader, SECTION_SIZE);
 
-	free(pBuffer);
-	g_pPETool->file.pBuffer = pBuffer_new;
+	free(g_pPETool->file.pBuffer);
+	g_pPETool->file.pBuffer = newpFBuffer;
 	if (!g_pPETool->pHeader->refresh()) {
 		return -1;
 	}
-	g_pPETool->image.pBuffer = g_pPETool->file.expand();
-	if (g_pPETool->image.pBuffer == NULL) {
+	IBuffer* pIBuffer = g_pPETool->file.expand();
+	if (pIBuffer == NULL) {
 		return -1;
 	}
+	g_pPETool->image.pBuffer = pIBuffer;
 
 	return 0;
 }
@@ -198,7 +247,7 @@ int inject(const char* section_name, char* bcode) {
 	return 0;
 }
 
-int fexport(FBuffer* pBuffer, const char* filename, unsigned int size, unsigned int flags) {
+int fexport(FBuffer* pBuffer, char* filename, unsigned int size, unsigned int flags) {
 	FILE* fp;
 
 	if (flags) {
@@ -219,6 +268,10 @@ int fexport(FBuffer* pBuffer, const char* filename, unsigned int size, unsigned 
 	fclose(fp);
 
 	return 0;
+}
+
+unsigned int falignmentcalc(unsigned int size) {
+	return g_pPETool->pHeader->pOptheader->FileAlignment * (size / g_pPETool->pHeader->pOptheader->FileAlignment + 1);
 }
 
 //
@@ -284,6 +337,10 @@ unsigned int RvaToFoa(unsigned int rva_addr) {
 	return 0;
 }
 
+unsigned int ialignmentcalc(unsigned int size) {
+	return g_pPETool->pHeader->pOptheader->SectionAlignment * (size / g_pPETool->pHeader->pOptheader->SectionAlignment + 1);
+}
+
 //
 // Struct declare
 //
@@ -314,6 +371,7 @@ FileObj File_new() {
 	file.write = fwrite;
 	file.newsection = newsection;
 	file.inject = inject;
+	file.alignmentcalc = falignmentcalc;
 
 	return file;
 }
@@ -326,11 +384,12 @@ ImageObj Image_new() {
 	image.write = iwrite;
 	image.compress = icompress;
 	image.rva_foa = RvaToFoa;
+	image.alignmentcalc = ialignmentcalc;
 
 	return image;
 }
 
-PETool* PETool_new(const char* filename) {
+PETool* PETool_new(char* filename) {
 	g_pPETool = (PETool*)malloc(sizeof(PETool));
 	if (g_pPETool == NULL) {
 		return g_pPETool;
@@ -345,6 +404,7 @@ PETool* PETool_new(const char* filename) {
 	g_pPETool->file = File_new();
 	g_pPETool->image = Image_new();
 	g_pPETool->fexport = fexport;
+	g_pPETool->pefree = PETool_free;
 
 	return g_pPETool;
 }

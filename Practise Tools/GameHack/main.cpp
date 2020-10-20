@@ -18,6 +18,7 @@
 ;* Date        Author      Ref    Revision (Date in DDMMYYYY format)
 ;* 18102020    lst97       1      First release
 ;* 19102020    lst97       2      Add newsection Function
+;* 20102020    lst97       3      add other way to inject table, free function
 ;*
 ;* Known Issue       :
 ;*
@@ -32,7 +33,7 @@
 int main() {
 	// PE Tool Logic
 	printf("[4] File & Image buffer\n");
-	PETool* pPetool = PETool_new("C:\\Users\\DEBUG\\Desktop\\C_Debug.exe");
+	PETool* pPetool = PETool_new((char*)"C:\\Users\\DEBUG\\Desktop\\C_Debug.exe");
 	if (pPetool == NULL) {
 		printf("File not found / Heap Init FAILE...\n\n");
 		getchar();
@@ -48,7 +49,7 @@ int main() {
 	}
 	printf("Compress PASS...\n");
 
-	if (pPetool->fexport(pFileBuffer, "C_Debug (cpy).exe", memory_size, 0) == -1) {
+	if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (cpy).exe", memory_size, 0) == -1) {
 		printf("%s already exist!\n", "C_Debug (cpy).exe");
 	}
 	printf("Create SUCCESS!\n\n");
@@ -60,14 +61,20 @@ int main() {
 		printf("Inject PASS...\n");
 
 		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
-		if (pPetool->fexport(pFileBuffer, "C_Debug (injected).exe", memory_size, 0) == -1) {
+		if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (injected).exe", memory_size, 0) == -1) {
 			printf("%s already exist!\n", "C_Debug (injected).exe");
+		} else {
+			printf("Create SUCCESS!\n\n");
+			free(pFileBuffer);
 		}
 	} else {
 		printf("Inject FAIL!\n");
 	}
-	printf("Create SUCCESS!\n\n");
-	free(pFileBuffer);
+
+	while (1) {
+		pPetool->pefree(pPetool);
+		pPetool = PETool_new((char*)"C:\\Users\\DEBUG\\Desktop\\C_Debug.exe");
+	}
 
 	// Game Hack Logic
 	const wchar_t progName[] = L"ac_client.exe";

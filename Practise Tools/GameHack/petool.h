@@ -28,6 +28,7 @@
 #define RAWPTR_OFFSET 0x14
 #define VIRTUALADDR_OFFSET 0x0C
 #define EXE_CHARACTERISTIC 0x60000020
+#define MISC_OFFSET 0x08
 
 // Uninit
 #define UNINIT_STACK 0xCCCCCCCC
@@ -111,12 +112,16 @@ unsigned int FoaToRva(unsigned int foa_addr);
 int newsection(const char* section_name, char* bcode, unsigned int bcode_size, unsigned int characteristics);
 int inject(const char* section_name, char* bcode);
 unsigned int falignmentcalc(unsigned int size);
+int expandsection(unsigned int size);
+//int mergesection();
 struct FileObj {
 	Header* pHeader;
 	FBuffer* pBuffer;
 	FBuffer* (*create)();
 	IBuffer* (*expand)();
 	int (*newsection)(const char*, char*, unsigned int, unsigned int);
+	int (*expandsection)(unsigned int size);
+	//int (*mergesection)();
 	int (*inject)(const char*, char*);
 	int (*write)(unsigned int, unsigned int);
 	unsigned int (*foa_rva)(unsigned int);

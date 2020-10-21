@@ -139,16 +139,13 @@ int hrefresh() {
 FBuffer* fcreate() {
 	unsigned int file_size = g_pPETool->pHeader->file_size;
 
-	if (g_pPETool->file.pBuffer != (FBuffer*)UNINIT_HEAP) {
-		free(g_pPETool->file.pBuffer);
-	}
-
 	FBuffer* pBuffer = (FBuffer*)malloc(file_size);
 	if (pBuffer == NULL) {
 		return pBuffer;
 	}
 	FILE* fp;
 	fp = fopen(g_pPETool->pFilename, "rb");
+
 	fread(pBuffer, file_size, 1, fp);
 
 	fclose(fp);
@@ -274,6 +271,52 @@ unsigned int falignmentcalc(unsigned int size) {
 	return g_pPETool->pHeader->pOptheader->FileAlignment * (size / g_pPETool->pHeader->pOptheader->FileAlignment + 1);
 }
 
+int expandsection(unsigned int size) {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+
+	unsigned int laststable_offset = pHeader->sectionTables_offset + SECTION_SIZE * (pHeader->NumberOfSection - 1);
+	unsigned int expend_size = g_pPETool->file.alignmentcalc(size - 1);
+
+	SECTION_HEADER sheader;
+	memcpy(&sheader, pFBuffer + laststable_offset, SECTION_SIZE);
+
+	sheader.SizeOfRawData += expend_size;
+	sheader.Misc.VirtualSize += expend_size;
+	unsigned int virtualsize_total = pHeader->SizeOfImage - sheader.VirtualAddress;
+	memcpy(pFBuffer + laststable_offset, &sheader, SECTION_SIZE);
+
+	unsigned int remainder = sheader.Misc.VirtualSize / virtualsize_total;
+	unsigned int newImageSize = pHeader->SizeOfImage;
+	if (remainder > 0) {
+		newImageSize += pHeader->pOptheader->SectionAlignment * remainder;
+	}
+	*(unsigned int*)(pFBuffer + pHeader->e_lfanew + OPTH_OFFSET + IMAGESIZE_OFFSET) = newImageSize;
+
+	if (pHeader->refresh() != NULL) {
+		free(g_pPETool->image.pBuffer);
+		g_pPETool->image.pBuffer = g_pPETool->file.expand();
+
+		return (int)expend_size;
+	}
+
+	return NULL;
+}
+
+//// Lack of idea 21/10/2020
+//int mergesection() {
+//	Header* pHeader = g_pPETool->pHeader;
+//	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+//
+//	unsigned int totalsection_size = pHeader->SizeOfImage - (unsigned int)*(int*)(pFBuffer + pHeader->sectionTables_offset + VIRTUALADDR_OFFSET);
+//	
+//	*(pFBuffer + pHeader->e_lfanew + SECTIONNUM_OFFSET) = 1;
+//	*(pFBuffer + pHeader->sectionTables_offset + MISC_OFFSET) = totalsection_size;
+//	*(pFBuffer + pHeader->sectionTables_offset + RAWSIZE_OFFSET) = totalsection_size;
+//
+//	return 0;
+//}
+
 //
 // Image function declare
 //
@@ -282,12 +325,10 @@ IBuffer* icreate() {
 	FBuffer* pBuffer = g_pPETool->file.pBuffer;
 	FBuffer* pSectionTable = pBuffer + pHeader->sectionTables_offset;
 
-	if (g_pPETool->image.pBuffer != (IBuffer*)UNINIT_HEAP) {
-		free(g_pPETool->image.pBuffer);
-	}
-
 	IBuffer* pImageBuffer = (IBuffer*)calloc(pHeader->SizeOfImage, 1);
-
+	if (pImageBuffer == NULL) {
+		return pImageBuffer;
+	}
 	memcpy(pImageBuffer, pBuffer, pHeader->SizeOfHeaders);
 
 	unsigned int virtualAddr, sizeOfRawData, pointerToRawData;
@@ -372,6 +413,7 @@ FileObj File_new() {
 	file.newsection = newsection;
 	file.inject = inject;
 	file.alignmentcalc = falignmentcalc;
+	file.expandsection = expandsection;
 
 	return file;
 }

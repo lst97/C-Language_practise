@@ -19,6 +19,7 @@
 ;* 18102020    lst97       1      First release
 ;* 19102020    lst97       2      Add newsection Function
 ;* 20102020    lst97       3      add other way to inject table, free function
+;* 21102020    lst97       4      add expand section function
 ;*
 ;* Known Issue       :
 ;*
@@ -50,12 +51,14 @@ int main() {
 	printf("Compress PASS...\n");
 
 	if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (cpy).exe", memory_size, 0) == -1) {
-		printf("%s already exist!\n", "C_Debug (cpy).exe");
+		printf("%s already exist!\n\n", "C_Debug (cpy).exe");
+		
+	} else {
+		printf("Create SUCCESS!\n\n");
+		free(pFileBuffer);
 	}
-	printf("Create SUCCESS!\n\n");
-	free(pFileBuffer);
 
-	printf("[5] Insert section\n");
+	/*printf("[5] Insert section\n");
 	char bcode[] = { 0x12, 0x13 };
 	if (pPetool->file.newsection(".inject", bcode, 2, EXE_CHARACTERISTIC) != -1) {
 		printf("Inject PASS...\n");
@@ -68,13 +71,27 @@ int main() {
 			free(pFileBuffer);
 		}
 	} else {
-		printf("Inject FAIL!\n");
+		printf("Inject FAIL!\n\n");
+	}*/
+
+	printf("[6] Expand last section\n");
+	if (pPetool->file.expandsection(0x1000) != NULL) {
+		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
+		if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (expanded).exe", memory_size, 0) == -1) {
+			printf("%s already exist!\n\n", "C_Debug (expanded).exe");
+		} else {
+			printf("Create SUCCESS!\n\n");
+			free(pFileBuffer);
+		}
+	} else {
+		printf("Expand FAIL!\n\n");
 	}
 
-	while (1) {
-		pPetool->pefree(pPetool);
-		pPetool = PETool_new((char*)"C:\\Users\\DEBUG\\Desktop\\C_Debug.exe");
-	}
+	//// memory leak test
+	//while (1) {
+	//	pPetool->pefree(pPetool);
+	//	pPetool = PETool_new((char*)"C:\\Users\\DEBUG\\Desktop\\C_Debug.exe");
+	//}
 
 	// Game Hack Logic
 	const wchar_t progName[] = L"ac_client.exe";

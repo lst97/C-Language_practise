@@ -5,14 +5,83 @@ PETool* g_pPETool;
 //
 // PE Tool Function
 //
+
+// This is tmp algo, the address may not be inorder. 23/10/2020 lst97
+unsigned int tofoa(unsigned int rva_addr) {
+	Header* pHeader = g_pPETool->pHeader;
+	HBuffer* pHBuffer = pHeader->pBuffer;
+
+	// covert logic
+	if (rva_addr > pHeader->SizeOfImage) {
+		return NULL;
+	}
+	if (rva_addr <= pHeader->SizeOfHeaders) {
+		return rva_addr;
+	}
+
+	unsigned int* sections_vaddr = (unsigned int*)malloc(sizeof(int) * pHeader->NumberOfSection);
+	unsigned int* sections_faddr = (unsigned int*)malloc(sizeof(int) * pHeader->NumberOfSection);
+
+	// travel section
+	for (unsigned int fecx = 0; fecx < pHeader->NumberOfSection; fecx++) {
+		*(sections_vaddr + fecx) = *(unsigned int*)(pHBuffer + pHeader->sectionTables_offset + SECTION_SIZE * fecx + VIRTUALADDR_OFFSET);
+		*(sections_faddr + fecx) = *(unsigned int*)(pHBuffer + pHeader->sectionTables_offset + SECTION_SIZE * fecx + RAWPTR_OFFSET);
+	}
+
+	unsigned int section_id = 0;
+	unsigned int foa_offset;
+	for (unsigned int fecx = pHeader->NumberOfSection; fecx > 0; --fecx) {
+		if (rva_addr >= *(sections_vaddr + fecx)) {
+			section_id = fecx;
+			foa_offset = rva_addr - *(sections_vaddr + fecx);
+			break;
+		}
+	}
+
+	unsigned int rvalue = *(sections_faddr + section_id) + foa_offset;
+	//free(sections_vaddr);
+	//free(sections_faddr);
+
+	return rvalue;
+}
+
+unsigned int torva(unsigned int foa_addr) {
+	Header* pHeader = g_pPETool->pHeader;
+	HBuffer* pHBuffer = pHeader->pBuffer;
+	unsigned int* sections_vaddr = (unsigned int*)malloc(sizeof(int) * pHeader->NumberOfSection);
+	unsigned int* sections_faddr = (unsigned int*)malloc(sizeof(int) * pHeader->NumberOfSection);
+
+	// travel section
+	for (unsigned int fecx = 0; fecx < pHeader->NumberOfSection; fecx++) {
+		*(sections_vaddr + fecx) = *(unsigned int*)(pHBuffer + pHeader->sectionTables_offset + SECTION_SIZE * fecx + VIRTUALADDR_OFFSET);
+		*(sections_faddr + fecx) = *(unsigned int*)(pHBuffer + pHeader->sectionTables_offset + SECTION_SIZE * fecx + RAWPTR_OFFSET);
+	}
+
+	// covert logic
+	if (foa_addr > pHeader->file_size) {
+		return NULL;
+	}
+	unsigned int section_id = 0;
+	unsigned int rva_offset;
+	for (unsigned int fecx = pHeader->NumberOfSection; fecx > 0; --fecx) {
+		if (foa_addr >= *(sections_faddr + fecx)) {
+			section_id = fecx;
+			rva_offset = foa_addr - *(sections_faddr + fecx);
+			break;
+		}
+	}
+
+	return *(sections_vaddr + section_id) + rva_offset;
+}
+
 int PETool_free(PETool* pPetool) {
-	free(g_pPETool->pHeader->pBuffer);
-	free(g_pPETool->pHeader->pOptheader);
-	free(g_pPETool->pHeader);
+	free(pPetool->pHeader->pBuffer);
+	free(pPetool->pHeader->pOptheader);
+	free(pPetool->pHeader);
 
-	free(g_pPETool->file.pBuffer);
+	free(pPetool->file.pBuffer);
 
-	free(g_pPETool->image.pBuffer);
+	free(pPetool->image.pBuffer);
 
 	free(pPetool);
 	return 0;
@@ -123,14 +192,60 @@ int hrefresh() {
 	if (pOptheader != (OPT_HEADER*)UNINIT_HEAP) {
 		free(pOptheader);
 	}
-	pOptheader = (OPT_HEADER*)malloc(OPTHEADER_SIZE);
+	pOptheader = (OPT_HEADER*)malloc(OPTHEADER_SIZE + DATADIRARR_SIZE);
 	if (pOptheader == NULL) {
 		return NULL;
 	}
-	memcpy(pOptheader, pBuffer + optheader_offset, OPTHEADER_SIZE);
+	memcpy(pOptheader, pBuffer + optheader_offset, OPTHEADER_SIZE + DATADIRARR_SIZE);
 	g_pPETool->pHeader->pOptheader = pOptheader;
 
 	return pHeader->SizeOfHeaders;
+}
+
+EXPORT_FUNCTION* getExportFunctions() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+	EXPORT_TABLE export_table;
+
+	unsigned int exporttable_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Export.VirtualAddress);
+	if (exporttable_offset == 0) {
+		return NULL;
+	}
+
+	memcpy(&export_table, pFBuffer + exporttable_offset, EXPORTTABLE_SIZE);
+	unsigned int foaOfFunctions = g_pPETool->tofoa(export_table.AddressOfFunctions);
+	unsigned int foaOfNames = g_pPETool->tofoa(export_table.AddressOfNames);
+	unsigned int foaOfNameOrdinals = g_pPETool->tofoa(export_table.AddressOfNameOrdinals);
+
+	unsigned int struct_count;
+	if (export_table.NumberOfName >= export_table.NumberOfFunctions) {
+		struct_count = export_table.NumberOfName;
+	} else {
+		struct_count = export_table.NumberOfFunctions;
+	}
+	EXPORT_FUNCTION* pFunction_info = (EXPORT_FUNCTION*)calloc((struct_count + 1), sizeof(EXPORT_FUNCTION));
+
+	unsigned short funame_offset = 0;
+	for (unsigned short fecx = 0; fecx < export_table.NumberOfFunctions; fecx++) {
+		(pFunction_info + fecx)->function_addr = *(unsigned int*)(pFBuffer + foaOfFunctions + fecx * 0x04);
+		(pFunction_info + fecx)->ordinal = fecx;
+		if ((pFunction_info + fecx)->function_addr != 0) {
+			// travel ordinals table
+			for (unsigned int fedx = 0; fedx < export_table.NumberOfName; fedx++) {
+				funame_offset = *(unsigned short*)(pFBuffer + foaOfNameOrdinals + fecx * 0x02);
+				if (funame_offset == fecx) {
+					// get function name ptr
+					(pFunction_info + fecx)->pName = (char*)((unsigned int)pFBuffer) + g_pPETool->tofoa(*(unsigned int*)(pFBuffer + foaOfNames + funame_offset * 0x04));
+					break;
+				}
+			}
+			if ((pFunction_info + fecx)->pName == (char*)UNINIT_HEAP) {
+				// function has no name
+				(pFunction_info + fecx)->pName = 0;
+			}
+		}
+	}
+	return pFunction_info;
 }
 
 //
@@ -151,10 +266,6 @@ FBuffer* fcreate() {
 	fclose(fp);
 
 	return pBuffer;
-}
-
-unsigned int FoaToRva(unsigned int foa_addr) {
-	return 0;
 }
 
 int fwrite(unsigned int offset, unsigned int size) {
@@ -374,10 +485,6 @@ unsigned int icompress(unsigned int* ptr) {
 	return pHeader->file_size;
 }
 
-unsigned int RvaToFoa(unsigned int rva_addr) {
-	return 0;
-}
-
 unsigned int ialignmentcalc(unsigned int size) {
 	return g_pPETool->pHeader->pOptheader->SectionAlignment * (size / g_pPETool->pHeader->pOptheader->SectionAlignment + 1);
 }
@@ -399,6 +506,8 @@ Header* Header_new() {
 		return pHeader;
 	}
 	pHeader->refresh = hrefresh;
+	pHeader->getExportFunctions = getExportFunctions;
+
 	return pHeader;
 }
 
@@ -425,7 +534,6 @@ ImageObj Image_new() {
 	image.pBuffer = image.create();
 	image.write = iwrite;
 	image.compress = icompress;
-	image.rva_foa = RvaToFoa;
 	image.alignmentcalc = ialignmentcalc;
 
 	return image;
@@ -445,6 +553,8 @@ PETool* PETool_new(char* filename) {
 	g_pPETool->pHeader->refresh();
 	g_pPETool->file = File_new();
 	g_pPETool->image = Image_new();
+	g_pPETool->tofoa = tofoa;
+	g_pPETool->torva = torva;
 	g_pPETool->fexport = fexport;
 	g_pPETool->pefree = PETool_free;
 

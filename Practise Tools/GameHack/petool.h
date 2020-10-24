@@ -13,8 +13,10 @@
 // size
 #define SECTION_SIZE 0x28
 #define OPTHEADER_SIZE 0x60
+#define DATADIRARR_SIZE 0x80
 #define DOSH_SIZE 0x40
 #define STUBNECESSARY_SIZE 0x40
+#define EXPORTFUNCTION_SIZE 0x0A
 
 // PE Header Offset
 #define SECTIONNUM_OFFSET 0x06
@@ -30,6 +32,9 @@
 #define EXE_CHARACTERISTIC 0x60000020
 #define MISC_OFFSET 0x08
 
+// Data dir
+#define EXPORTTABLE_SIZE 0x28
+
 // Uninit
 #define UNINIT_STACK 0xCCCCCCCC
 #define UNINIT_HEAP 0xCDCDCDCD
@@ -40,6 +45,30 @@ typedef Buffer IBuffer;
 typedef Buffer HBuffer;
 
 // PE struct
+struct DATA_DIRECTORY {
+	DWORD VirtualAddress;
+	DWORD Size;
+};
+
+struct DATA_DIRECTORY_ARRAY {
+	DATA_DIRECTORY Export;
+	DATA_DIRECTORY Import;
+	DATA_DIRECTORY Resource;
+	DATA_DIRECTORY Exception;
+	DATA_DIRECTORY Security;
+	DATA_DIRECTORY BaseRelocation;
+	DATA_DIRECTORY Debug;
+	DATA_DIRECTORY Copyright;
+	DATA_DIRECTORY GlobalPtr;
+	DATA_DIRECTORY TLS;
+	DATA_DIRECTORY LoadConfiguration;
+	DATA_DIRECTORY BoundImport;
+	DATA_DIRECTORY ImportAddress;
+	DATA_DIRECTORY DelayLoadImport;
+	DATA_DIRECTORY COM;
+	DATA_DIRECTORY Reserved;
+};
+
 struct OPT_HEADER {
 	WORD Magic;
 	BYTE MajorLinkerVersion;
@@ -71,6 +100,7 @@ struct OPT_HEADER {
 	DWORD SizeOfHeapCommit;
 	DWORD LoaderFlags;
 	DWORD NumberOfRvaAndSizes;
+	DATA_DIRECTORY_ARRAY DataDirArray;
 };
 
 // Section struct
@@ -90,7 +120,32 @@ struct SECTION_HEADER {
 	DWORD Characteristics;
 };
 
+//
+// Data Dir struct
+//
+// Export struct
+struct EXPORT_TABLE {
+	DWORD Characteristics;
+	DWORD TimeDateStamp;
+	WORD MajorVersion;
+	WORD MinorVersion;
+	DWORD Name;
+	DWORD Base;
+	DWORD NumberOfFunctions;
+	DWORD NumberOfName;
+	DWORD AddressOfFunctions;
+	DWORD AddressOfNames;
+	DWORD AddressOfNameOrdinals;
+};
+
 // Program struct
+struct EXPORT_FUNCTION {
+	unsigned short ordinal;
+	char* pName;
+	unsigned int function_addr;
+};
+
+EXPORT_FUNCTION* getExportFunctions();
 struct Header {
 	unsigned short SizeOfOptionalHeader;
 	unsigned short NumberOfSection;
@@ -104,11 +159,11 @@ struct Header {
 	unsigned int file_size;
 
 	int (*refresh)();
+	EXPORT_FUNCTION* (*getExportFunctions)();
 };
 
 FBuffer* fcreate();
 int fwrite(unsigned int offset, unsigned int size);
-unsigned int FoaToRva(unsigned int foa_addr);
 int newsection(const char* section_name, char* bcode, unsigned int bcode_size, unsigned int characteristics);
 int inject(const char* section_name, char* bcode);
 unsigned int falignmentcalc(unsigned int size);
@@ -124,20 +179,17 @@ struct FileObj {
 	//int (*mergesection)();
 	int (*inject)(const char*, char*);
 	int (*write)(unsigned int, unsigned int);
-	unsigned int (*foa_rva)(unsigned int);
 	unsigned int (*alignmentcalc)(unsigned int);
 };
 
 int iwrite(unsigned int offset, unsigned int size);
 unsigned int icompress(unsigned int* ptr);
-unsigned int RvaToFoa(unsigned int rva_addr);
 unsigned int ialignmentcalc(unsigned int size);
 struct ImageObj {
 	Header* pHeader;
 	IBuffer* pBuffer;
 	IBuffer* (*create)();
 	int (*write)(unsigned int, unsigned int);
-	unsigned int (*rva_foa)(unsigned int);
 	unsigned int (*compress)(unsigned int*);
 	unsigned int (*alignmentcalc)(unsigned int);
 };
@@ -155,9 +207,13 @@ struct Validator {
 
 // flags: overwrite(0); return: -1 (file exit)
 int fexport(FBuffer* pBuffer, char* filename, unsigned int size, unsigned int flags);
+unsigned int tofoa(unsigned int rva_addr);
+unsigned int torva(unsigned int foa_addr);
 struct PETool {
 	char* pFilename;
 	int (*fexport)(FBuffer*, char*, unsigned int, unsigned int);
+	unsigned int (*tofoa)(unsigned int);
+	unsigned int (*torva)(unsigned int);
 	int (*pefree)(PETool*);
 	Header* pHeader;
 	Validator validator;

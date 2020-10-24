@@ -20,6 +20,7 @@
 ;* 19102020    lst97       2      Add newsection Function
 ;* 20102020    lst97       3      add other way to inject table, free function
 ;* 21102020    lst97       4      add expand section function
+;* 24102020    lst97       5      can view export table and its' functions
 ;*
 ;* Known Issue       :
 ;*
@@ -58,6 +59,40 @@ int main() {
 		free(pFileBuffer);
 	}
 
+	printf("[7] Export Table\n");
+	PETool* pPetool_export_test = PETool_new((char*)"C:\\Users\\DEBUG\\Desktop\\DebugTools\\ReClass.NET\\x86\\NativeCore.dll");
+	EXPORT_FUNCTION* pExportFunctions = pPetool_export_test->pHeader->getExportFunctions();
+	if (pExportFunctions != 0) {
+		unsigned int stop_flag;
+		unsigned int wecx = 0;
+		while (true) {
+			stop_flag = (pExportFunctions + wecx)->function_addr + (pExportFunctions + wecx)->ordinal + (unsigned int)(pExportFunctions + wecx)->pName;
+			if (stop_flag == 0) {
+				break;
+			}
+
+			if ((pExportFunctions + wecx)->pName != 0) {
+				printf("Function[%d]:\nAddress:\t%08X\nOrdinal:\t%04X\nName:\t\t%s\n\n", \
+					wecx, \
+					(pExportFunctions + wecx)->function_addr, \
+					(pExportFunctions + wecx)->ordinal, \
+					(pExportFunctions + wecx)->pName
+				);
+			}
+			else {
+				printf("Function[%d]:\nAddress:\t%08X\nOrdinal:\t%04X\nName:\t\t-\n\n", \
+					wecx, \
+					(pExportFunctions + wecx)->function_addr, \
+					(pExportFunctions + wecx)->ordinal
+				);
+			}
+			wecx++;
+		}
+	} else {
+		printf("No export table found!\n\n");
+	}
+	pPetool_export_test->pefree(pPetool_export_test);
+
 	/*printf("[5] Insert section\n");
 	char bcode[] = { 0x12, 0x13 };
 	if (pPetool->file.newsection(".inject", bcode, 2, EXE_CHARACTERISTIC) != -1) {
@@ -74,7 +109,7 @@ int main() {
 		printf("Inject FAIL!\n\n");
 	}*/
 
-	printf("[6] Expand last section\n");
+	/*printf("[6] Expand last section\n");
 	if (pPetool->file.expandsection(0x1000) != NULL) {
 		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
 		if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (expanded).exe", memory_size, 0) == -1) {
@@ -85,7 +120,8 @@ int main() {
 		}
 	} else {
 		printf("Expand FAIL!\n\n");
-	}
+	}*/
+
 
 	//// memory leak test
 	//while (1) {

@@ -103,6 +103,11 @@ struct OPT_HEADER {
 	DATA_DIRECTORY_ARRAY DataDirArray;
 };
 
+struct BASE_RELOCATION {
+	DWORD VirtualAddress;
+	DWORD SizeOfBlock;
+};
+
 // Section struct
 struct SECTION_HEADER {
 	BYTE Name[8];
@@ -145,7 +150,13 @@ struct EXPORT_FUNCTION {
 	unsigned int function_addr;
 };
 
+struct RELOC_BLOCK {
+	BASE_RELOCATION reloc;
+	unsigned short* pData;
+};
+
 EXPORT_FUNCTION* getExportFunctions();
+RELOC_BLOCK* getRelocation();
 struct Header {
 	unsigned short SizeOfOptionalHeader;
 	unsigned short NumberOfSection;
@@ -160,7 +171,9 @@ struct Header {
 
 	int (*refresh)();
 	EXPORT_FUNCTION* (*getExportFunctions)();
+	RELOC_BLOCK* (*getRelocation)();
 };
+
 
 FBuffer* fcreate();
 int fwrite(unsigned int offset, unsigned int size);

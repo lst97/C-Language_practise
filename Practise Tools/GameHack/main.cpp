@@ -21,6 +21,7 @@
 ;* 20102020    lst97       3      add other way to inject table, free function
 ;* 21102020    lst97       4      add expand section function
 ;* 24102020    lst97       5      can view export table and its' functions
+;* 25102020    lst97       6      can view relocation table info
 ;*
 ;* Known Issue       :
 ;*
@@ -59,7 +60,7 @@ int main() {
 		free(pFileBuffer);
 	}
 
-	printf("[7] Export Table\n");
+	/*printf("[7] Export Table\n");
 	PETool* pPetool_export_test = PETool_new((char*)"C:\\Users\\DEBUG\\Desktop\\DebugTools\\ReClass.NET\\x86\\NativeCore.dll");
 	EXPORT_FUNCTION* pExportFunctions = pPetool_export_test->pHeader->getExportFunctions();
 	if (pExportFunctions != 0) {
@@ -91,7 +92,33 @@ int main() {
 	} else {
 		printf("No export table found!\n\n");
 	}
-	pPetool_export_test->pefree(pPetool_export_test);
+	pPetool_export_test->pefree(pPetool_export_test);*/
+
+	printf("[8] Base Relocation Table\n\n");
+	RELOC_BLOCK* pRelocBlock = pPetool->pHeader->getRelocation();
+	unsigned int wecx = 0;
+	unsigned int address_count;
+	unsigned int remainder;
+	unsigned short data;
+	while (true) {
+		if ((pRelocBlock + wecx)->pData == 0) {
+			break;
+		}
+		address_count = ((pRelocBlock + wecx)->reloc.SizeOfBlock - 0x08) / 2;
+		remainder = ((pRelocBlock + wecx)->reloc.SizeOfBlock - 0x08) % 2;
+		if (remainder) {
+			address_count++;
+		}
+		printf("Block_Address[%08X]\n", (pRelocBlock + wecx)->reloc.VirtualAddress);
+		for (unsigned int fecx = 0; fecx < address_count; fecx++) {
+			data = *((pRelocBlock + wecx)->pData + fecx);
+			printf("%04X,\t%d\n", data & 0x0FFF, ((data & (unsigned short)0xF000)) >> 12);
+		}
+		free((pRelocBlock + wecx)->pData);
+		printf("\n");
+		wecx++;
+	}
+	free(pRelocBlock);
 
 	/*printf("[5] Insert section\n");
 	char bcode[] = { 0x12, 0x13 };

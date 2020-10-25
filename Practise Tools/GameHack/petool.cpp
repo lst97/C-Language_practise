@@ -248,6 +248,44 @@ EXPORT_FUNCTION* getExportFunctions() {
 	return pFunction_info;
 }
 
+RELOC_BLOCK* getRelocation() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+
+	unsigned int reloc_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.BaseRelocation.VirtualAddress);
+	unsigned int virtual_addr;
+	unsigned int block_size = 0;
+	unsigned int block_size_sum = block_size;
+	unsigned int wecx = 0;
+	while (true) {
+		virtual_addr = *(unsigned int*)(pFBuffer + reloc_offset + block_size_sum);
+		block_size = *(unsigned int*)(pFBuffer + reloc_offset + sizeof(int) + block_size_sum);
+		if (virtual_addr + block_size == 0) {
+			break;
+		}
+		block_size_sum += block_size;
+		wecx++;
+	}
+
+	unsigned int reloc_count = wecx;
+	block_size_sum ^= block_size_sum;
+	RELOC_BLOCK* pReloc_block = (RELOC_BLOCK*)malloc(sizeof(RELOC_BLOCK) * (reloc_count + 1));
+	unsigned short* pData;
+	for (unsigned int fecx = 0; fecx < reloc_count; fecx++) {
+		(pReloc_block + fecx)->reloc.VirtualAddress = *(unsigned int*)(pFBuffer + reloc_offset + block_size_sum);
+		(pReloc_block + fecx)->reloc.SizeOfBlock = *(unsigned int*)(pFBuffer + reloc_offset + 0x04 + block_size_sum);
+		pData = (unsigned short*)malloc((pReloc_block + fecx)->reloc.SizeOfBlock - 0x08);
+		memcpy(pData, pFBuffer + reloc_offset + block_size_sum + 0x08, (pReloc_block + fecx)->reloc.SizeOfBlock - 0x08);
+		block_size_sum += (pReloc_block + fecx)->reloc.SizeOfBlock;
+		(pReloc_block + fecx)->pData = pData;
+	}
+	(pReloc_block + reloc_count)->reloc.VirtualAddress = 0;
+	(pReloc_block + reloc_count)->reloc.SizeOfBlock = 0;
+	(pReloc_block + reloc_count)->pData = 0;
+	
+	return pReloc_block;
+}
+
 //
 // File function declare
 //
@@ -507,6 +545,7 @@ Header* Header_new() {
 	}
 	pHeader->refresh = hrefresh;
 	pHeader->getExportFunctions = getExportFunctions;
+	pHeader->getRelocation = getRelocation;
 
 	return pHeader;
 }

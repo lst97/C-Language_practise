@@ -142,6 +142,17 @@ struct EXPORT_TABLE {
 	DWORD AddressOfNames;
 	DWORD AddressOfNameOrdinals;
 };
+// Import struct
+struct IMPORT_DESCRIPTOR {
+	union {
+		DWORD Characteristics;
+		DWORD OriginalFirstThunk;
+	};
+	DWORD TimeDateStamp;
+	DWORD ForwarderChain;
+	DWORD Name;
+	DWORD FirstThunk;
+};
 
 // Program struct
 struct EXPORT_FUNCTION {
@@ -155,8 +166,22 @@ struct RELOC_BLOCK {
 	unsigned short* pData;
 };
 
+struct IMPORT_FUNCTION_NAME {
+	WORD Hit;
+	union {
+		char* pName;
+		unsigned int ordinary;
+	};
+};
+
+struct IMPORT_FUNCTIONS {  // Require a free function 26/10/2020 lst97;
+	char* pDllName;
+	IMPORT_FUNCTION_NAME* pImportFunctionNames;
+};
+
 EXPORT_FUNCTION* getExportFunctions();
 RELOC_BLOCK* getRelocation();
+IMPORT_FUNCTIONS* getImportFunctionNames();
 struct Header {
 	unsigned short SizeOfOptionalHeader;
 	unsigned short NumberOfSection;
@@ -172,8 +197,9 @@ struct Header {
 	int (*refresh)();
 	EXPORT_FUNCTION* (*getExportFunctions)();
 	RELOC_BLOCK* (*getRelocation)();
-};
+	IMPORT_FUNCTIONS* (*getImportFunctionNames)();
 
+};
 
 FBuffer* fcreate();
 int fwrite(unsigned int offset, unsigned int size);
@@ -235,6 +261,7 @@ struct PETool {
 };
 int PETool_free(PETool* pPetool);
 
+// Constructor
 PETool* PETool_new(char* filename);
 Header* Header_new();
 Validator Validator_new();

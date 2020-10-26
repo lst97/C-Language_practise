@@ -286,6 +286,96 @@ RELOC_BLOCK* getRelocation() {
 	return pReloc_block;
 }
 
+unsigned int getThunkSize(unsigned int thunk_offset) {
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+	unsigned int wecx = 0;
+
+	while (true) {
+		if (*(((unsigned int*)(pFBuffer + thunk_offset)) + wecx) == 0) {
+			break;
+		}
+		wecx++;
+	}
+	return wecx;
+}
+
+unsigned int getImportTableSize() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+	unsigned int wecx = 0;
+	IMPORT_DESCRIPTOR import_descrip;
+	unsigned int descrip_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Import.VirtualAddress);
+
+	while (true) {
+		memcpy(&import_descrip, ((IMPORT_DESCRIPTOR*)(pFBuffer + descrip_offset) + wecx), sizeof(IMPORT_DESCRIPTOR));
+		if (import_descrip.Name == 0) {
+			break;
+		}
+		else {
+		}
+		wecx++;
+	}
+	return wecx;
+}
+
+bool isImportByName(unsigned int data) {
+	return (data & 0x80000000) ? false : true;
+}
+
+IMPORT_FUNCTIONS* getImportFunctionNames() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+
+	unsigned int descrip_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Import.VirtualAddress);
+	unsigned int wecx = 0;
+	unsigned int wedx = 0;
+	unsigned int thunk_count = 0;
+	unsigned int import_table_count = 0;
+	unsigned int sum_total = 0;
+	unsigned int str_length = 0;
+	unsigned int thunk_offset;
+	unsigned int fnname_offset;
+	char* pName;
+	IMPORT_DESCRIPTOR import_descrip;
+	IMPORT_FUNCTION_NAME* pImportFunctionNames;
+
+	import_table_count = getImportTableSize();
+
+	IMPORT_FUNCTIONS* pImportFunction = (IMPORT_FUNCTIONS*)calloc(sizeof(IMPORT_FUNCTIONS) * (import_table_count + 1), 1);
+	while (import_table_count > 0) {
+		memcpy(&import_descrip, ((IMPORT_DESCRIPTOR*)(pFBuffer + descrip_offset) + wecx), sizeof(IMPORT_DESCRIPTOR));
+		thunk_offset = g_pPETool->tofoa(import_descrip.OriginalFirstThunk);
+		thunk_count = getThunkSize(thunk_offset);
+		pImportFunctionNames = (IMPORT_FUNCTION_NAME*)calloc(sizeof(IMPORT_FUNCTION_NAME) * (thunk_count + 1), 1);
+
+		(pImportFunction + wecx)->pDllName = (char*)(pFBuffer + g_pPETool->tofoa(import_descrip.Name));
+		(pImportFunction + wecx)->pImportFunctionNames = pImportFunctionNames;
+
+		while (thunk_count > 0) {
+			fnname_offset = g_pPETool->tofoa(*((unsigned int*)(pFBuffer + thunk_offset) + wedx));
+			(pImportFunctionNames + wedx)->Hit = *(unsigned short*)(pFBuffer + fnname_offset);
+			if (isImportByName(*(pFBuffer + fnname_offset))) {
+				// get string
+				str_length = strlen((char*)(pFBuffer + fnname_offset + 0x02));
+				pName = (char*)malloc(str_length);
+				memcpy(pName, pFBuffer + fnname_offset + 0x02, str_length + 1);
+				(pImportFunctionNames + wedx)->pName = pName;
+			} else {
+				(pImportFunctionNames + wedx)->Hit = 0;
+				// get ordinary
+				(pImportFunctionNames + wedx)->ordinary = *((unsigned int*)(pFBuffer + thunk_offset) + wedx) & 0x7FFFFFFF;
+			}
+			wedx++;
+			thunk_count--;
+		}
+		wedx ^= wedx;
+		wecx++;
+		import_table_count--;
+	}
+
+	return pImportFunction;
+}
+
 //
 // File function declare
 //
@@ -546,6 +636,7 @@ Header* Header_new() {
 	pHeader->refresh = hrefresh;
 	pHeader->getExportFunctions = getExportFunctions;
 	pHeader->getRelocation = getRelocation;
+	pHeader->getImportFunctionNames = getImportFunctionNames;
 
 	return pHeader;
 }

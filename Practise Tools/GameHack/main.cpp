@@ -22,6 +22,7 @@
 ;* 21102020    lst97       4      add expand section function
 ;* 24102020    lst97       5      can view export table and its' functions
 ;* 25102020    lst97       6      can view relocation table info
+;* 26102020    lst97       7      can view import table info
 ;*
 ;* Known Issue       :
 ;*
@@ -94,7 +95,7 @@ int main() {
 	}
 	pPetool_export_test->pefree(pPetool_export_test);*/
 
-	printf("[8] Base Relocation Table\n\n");
+	/*printf("[8] Base Relocation Table\n\n");
 	RELOC_BLOCK* pRelocBlock = pPetool->pHeader->getRelocation();
 	unsigned int wecx = 0;
 	unsigned int address_count;
@@ -118,7 +119,29 @@ int main() {
 		printf("\n");
 		wecx++;
 	}
-	free(pRelocBlock);
+	free(pRelocBlock);*/
+
+	printf("[10] Import table\n\n");
+	IMPORT_FUNCTIONS* pImport_Functions = pPetool->pHeader->getImportFunctionNames();
+	unsigned int wecx = 0;
+	unsigned int wedx = 0;
+
+	IMPORT_FUNCTION_NAME* pImportFunctionNames;
+	while ((pImport_Functions + wecx)->pDllName != 0) {
+		printf("%s\n", (pImport_Functions + wecx)->pDllName);
+		pImportFunctionNames = (pImport_Functions + wecx)->pImportFunctionNames;
+		while ((pImportFunctionNames + wedx)->pName != 0) {
+			if ((pImportFunctionNames + wedx)->Hit == 0) {
+				printf("Ordinary:\t%05X\n", (pImportFunctionNames + wedx)->ordinary);
+			} else {
+				printf("FnName:\t[%05X] - %s\n", (pImportFunctionNames + wedx)->Hit, (pImportFunctionNames + wedx)->pName);
+			}
+			wedx++;
+		}
+		printf("\n");
+		wedx ^= wedx;
+		wecx++;
+	}
 
 	/*printf("[5] Insert section\n");
 	char bcode[] = { 0x12, 0x13 };

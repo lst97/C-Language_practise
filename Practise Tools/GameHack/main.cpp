@@ -23,6 +23,7 @@
 ;* 24102020    lst97       5      can view export table and its' functions
 ;* 25102020    lst97       6      can view relocation table info
 ;* 26102020    lst97       7      can view import table info
+;* 28102020    lst97       8      add inject dll function
 ;*
 ;* Known Issue       :
 ;*
@@ -33,6 +34,7 @@
 
 #include "proga.h"
 #include "petool.h"
+#include "time.h"
 
 int main() {
 	// PE Tool Logic
@@ -52,14 +54,41 @@ int main() {
 		return 0;
 	}
 	printf("Compress PASS...\n");
-
-	if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (cpy).exe", memory_size, 0) == -1) {
+	if (pPetool->fexport((char*)"C_Debug (cpy).exe", 0) == -1) {
 		printf("%s already exist!\n\n", "C_Debug (cpy).exe");
-		
 	} else {
 		printf("Create SUCCESS!\n\n");
-		free(pFileBuffer);
 	}
+
+
+	/*printf("[5] Insert section\n");
+	char bcode[] = { 0x12, 0x13 };
+	if (pPetool->file.newsection(".inject", bcode, 2, EXE_CHARACTERISTIC) != -1) {
+		printf("Inject PASS...\n");
+
+		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
+		if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (injected).exe", memory_size, 0) == -1) {
+			printf("%s already exist!\n", "C_Debug (injected).exe");
+		} else {
+			printf("Create SUCCESS!\n\n");
+			free(pFileBuffer);
+		}
+	} else {
+		printf("Inject FAIL!\n\n");
+	}*/
+
+	/*printf("[6] Expand last section\n");
+	if (pPetool->file.expandsection(0x1000) != NULL) {
+		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
+		if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (expanded).exe", memory_size, 0) == -1) {
+			printf("%s already exist!\n\n", "C_Debug (expanded).exe");
+		} else {
+			printf("Create SUCCESS!\n\n");
+			free(pFileBuffer);
+		}
+	} else {
+		printf("Expand FAIL!\n\n");
+	}*/
 
 	/*printf("[7] Export Table\n");
 	PETool* pPetool_export_test = PETool_new((char*)"C:\\Users\\DEBUG\\Desktop\\DebugTools\\ReClass.NET\\x86\\NativeCore.dll");
@@ -80,8 +109,7 @@ int main() {
 					(pExportFunctions + wecx)->ordinal, \
 					(pExportFunctions + wecx)->pName
 				);
-			}
-			else {
+			} else {
 				printf("Function[%d]:\nAddress:\t%08X\nOrdinal:\t%04X\nName:\t\t-\n\n", \
 					wecx, \
 					(pExportFunctions + wecx)->function_addr, \
@@ -121,12 +149,11 @@ int main() {
 	}
 	free(pRelocBlock);*/
 
-	printf("[10] Import table\n\n");
+	/*printf("[10] Import table\n\n");
 	IMPORT_FUNCTIONS* pImport_Functions = pPetool->pHeader->getImportFunctionNames();
+	IMPORT_FUNCTION_NAME* pImportFunctionNames;
 	unsigned int wecx = 0;
 	unsigned int wedx = 0;
-
-	IMPORT_FUNCTION_NAME* pImportFunctionNames;
 	while ((pImport_Functions + wecx)->pDllName != 0) {
 		printf("%s\n", (pImport_Functions + wecx)->pDllName);
 		pImportFunctionNames = (pImport_Functions + wecx)->pImportFunctionNames;
@@ -141,37 +168,34 @@ int main() {
 		printf("\n");
 		wedx ^= wedx;
 		wecx++;
+	}*/
+
+	/*
+	// Code did not tested yet 27/10/2020
+	printf("[11] Bound table\n\n");
+	char buffer[26] = { 0 };
+	time_t tm_info;
+
+	BOUND_TABLE* pBoundTable = pPetool->pHeader->getBoundTableInfo();
+	if (pBoundTable != 0) {
+		unsigned int table_length = pBoundTable->NumberOfModuleForwarderRefs + 1;
+		for (unsigned int fecx = 0; fecx < table_length; fecx++) {
+			tm_info = (pBoundTable + fecx)->TimeDataStamp;
+			time(&tm_info);
+			strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", localtime(&tm_info));
+			printf("DLL Name:\t%s\nTime:\t%s\n\n", (pBoundTable + fecx)->pName, buffer);
+		}
+	} else {
+		printf("Bound table not found!\n\n");
+	}*/
+
+	printf("[12] Dll Injection\n\n");
+	pPetool->dllInjection((char*)"inject.dll", (char*)"fnInject");
+	if (pPetool->fexport((char*)"C_Debug (dllinject).exe", 0) == -1) {
+		printf("%s already exist!\n\n", "C_Debug (dllinject).exe");
+	} else {
+		printf("Create SUCCESS!\n\n");
 	}
-
-	/*printf("[5] Insert section\n");
-	char bcode[] = { 0x12, 0x13 };
-	if (pPetool->file.newsection(".inject", bcode, 2, EXE_CHARACTERISTIC) != -1) {
-		printf("Inject PASS...\n");
-
-		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
-		if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (injected).exe", memory_size, 0) == -1) {
-			printf("%s already exist!\n", "C_Debug (injected).exe");
-		} else {
-			printf("Create SUCCESS!\n\n");
-			free(pFileBuffer);
-		}
-	} else {
-		printf("Inject FAIL!\n\n");
-	}*/
-
-	/*printf("[6] Expand last section\n");
-	if (pPetool->file.expandsection(0x1000) != NULL) {
-		memory_size = pPetool->image.compress((unsigned int*)&pFileBuffer);
-		if (pPetool->fexport(pFileBuffer, (char*)"C_Debug (expanded).exe", memory_size, 0) == -1) {
-			printf("%s already exist!\n\n", "C_Debug (expanded).exe");
-		} else {
-			printf("Create SUCCESS!\n\n");
-			free(pFileBuffer);
-		}
-	} else {
-		printf("Expand FAIL!\n\n");
-	}*/
-
 
 	//// memory leak test
 	//while (1) {

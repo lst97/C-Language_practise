@@ -179,9 +179,16 @@ struct IMPORT_FUNCTIONS {  // Require a free function 26/10/2020 lst97;
 	IMPORT_FUNCTION_NAME* pImportFunctionNames;
 };
 
+struct BOUND_TABLE {
+	unsigned int TimeDataStamp;
+	char* pName;
+	unsigned short NumberOfModuleForwarderRefs;
+};
+
 EXPORT_FUNCTION* getExportFunctions();
 RELOC_BLOCK* getRelocation();
 IMPORT_FUNCTIONS* getImportFunctionNames();
+BOUND_TABLE* getBoundTableInfo();
 struct Header {
 	unsigned short SizeOfOptionalHeader;
 	unsigned short NumberOfSection;
@@ -198,14 +205,16 @@ struct Header {
 	EXPORT_FUNCTION* (*getExportFunctions)();
 	RELOC_BLOCK* (*getRelocation)();
 	IMPORT_FUNCTIONS* (*getImportFunctionNames)();
+	BOUND_TABLE* (*getBoundTableInfo)();
 
 };
 
 FBuffer* fcreate();
-int fwrite(unsigned int offset, unsigned int size);
-int newsection(const char* section_name, char* bcode, unsigned int bcode_size, unsigned int characteristics);
-int inject(const char* section_name, char* bcode);
+//int fwrite(unsigned int offset, unsigned int size);
+int newsection(const char* section_name, unsigned int bcode_size, unsigned int characteristics);
+//int inject(const char* section_name, char* bcode);
 unsigned int falignmentcalc(unsigned int size);
+int fmodify(unsigned int offset, unsigned int size, unsigned char* data);
 int expandsection(unsigned int size);
 //int mergesection();
 struct FileObj {
@@ -213,11 +222,11 @@ struct FileObj {
 	FBuffer* pBuffer;
 	FBuffer* (*create)();
 	IBuffer* (*expand)();
-	int (*newsection)(const char*, char*, unsigned int, unsigned int);
+	int (*newsection)(const char*, unsigned int, unsigned int);
 	int (*expandsection)(unsigned int size);
 	//int (*mergesection)();
-	int (*inject)(const char*, char*);
-	int (*write)(unsigned int, unsigned int);
+	//int (*inject)(const char*, char*);
+	int (*modify)(unsigned int, unsigned int, unsigned char*);
 	unsigned int (*alignmentcalc)(unsigned int);
 };
 
@@ -245,14 +254,16 @@ struct Validator {
 };
 
 // flags: overwrite(0); return: -1 (file exit)
-int fexport(FBuffer* pBuffer, char* filename, unsigned int size, unsigned int flags);
+int fexport(char* filename, unsigned int flags);
 unsigned int tofoa(unsigned int rva_addr);
 unsigned int torva(unsigned int foa_addr);
+unsigned int dllInjection(char* dll_name, char* function_name);
 struct PETool {
 	char* pFilename;
-	int (*fexport)(FBuffer*, char*, unsigned int, unsigned int);
+	int (*fexport)(char*, unsigned int);
 	unsigned int (*tofoa)(unsigned int);
 	unsigned int (*torva)(unsigned int);
+	unsigned int (*dllInjection)(char*, char*);
 	int (*pefree)(PETool*);
 	Header* pHeader;
 	Validator validator;

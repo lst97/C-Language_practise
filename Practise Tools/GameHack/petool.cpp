@@ -74,6 +74,82 @@ unsigned int torva(unsigned int foa_addr) {
 	return *(sections_vaddr + section_id) + rva_offset;
 }
 
+unsigned int getImportTableSize() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+	IMPORT_DESCRIPTOR import_descrip;
+	unsigned int descrip_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Import.VirtualAddress);
+
+	unsigned int wecx = 0;
+	while (true) {
+		memcpy(&import_descrip, ((IMPORT_DESCRIPTOR*)(pFBuffer + descrip_offset) + wecx), sizeof(IMPORT_DESCRIPTOR));
+		if (import_descrip.Name == 0) {
+			break;
+		}
+		wecx++;
+	}
+
+	return wecx;
+}
+
+unsigned int moveImportTable() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+
+	char bcode[0x800] = { 0 };
+	unsigned int newsection_offset = g_pPETool->file.newsection(".inject", 0x800, 0x40000040);
+	pFBuffer = g_pPETool->file.pBuffer;
+	unsigned int import_descrip_count = getImportTableSize();
+	unsigned int new_descrip_offset = newsection_offset + sizeof(IMPORT_DESCRIPTOR) * import_descrip_count;
+
+	// copy descriptor to new section
+	unsigned int import_descrip_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Import.VirtualAddress);
+	memcpy(pFBuffer + newsection_offset, pFBuffer + import_descrip_offset, sizeof(IMPORT_DESCRIPTOR) * import_descrip_count);
+	memset(pFBuffer + import_descrip_offset, 0, sizeof(IMPORT_DESCRIPTOR) * import_descrip_count);
+
+	unsigned int newsection_rva = g_pPETool->torva(newsection_offset);
+	g_pPETool->file.modify(g_pPETool->pHeader->e_lfanew + OPTH_OFFSET + OPTHEADER_SIZE + 0x08, sizeof(unsigned int*), (unsigned char*)(&newsection_rva));
+
+	g_pPETool->pHeader->refresh();
+
+	return newsection_offset;
+}
+
+struct Inject_Descriptor {
+	unsigned int INT[2] = { 0 };
+	unsigned int IAT[2] = { 0 };
+	unsigned short Hit;
+};
+
+unsigned int dllInjection(char* dll_name, char* function_name) {
+	Header* pHeader = g_pPETool->pHeader;
+	IMPORT_DESCRIPTOR descriptor;
+	unsigned int newimport_offset = moveImportTable();
+	unsigned int import_table_count = getImportTableSize();
+	unsigned int newdescrip_offset = sizeof(IMPORT_DESCRIPTOR) * (import_table_count);
+	unsigned int dll_name_size = strlen(dll_name);
+	unsigned int fn_name_size = strlen(function_name);
+
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+	descriptor.TimeDateStamp = 0;
+	descriptor.ForwarderChain = 0;
+	descriptor.OriginalFirstThunk = g_pPETool->torva(newimport_offset + newdescrip_offset + sizeof(IMPORT_DESCRIPTOR) * 2);
+	descriptor.FirstThunk = g_pPETool->torva(newimport_offset + newdescrip_offset + sizeof(IMPORT_DESCRIPTOR) * 2 + 0x08);
+	descriptor.Name = g_pPETool->torva(newimport_offset + newdescrip_offset + sizeof(IMPORT_DESCRIPTOR) * 2 + 0x10);
+
+	Inject_Descriptor inject_descrip;
+	inject_descrip.INT[0] = 0; // The program can't run if the INT = IAT, I don't know why. 28/10/2020 lst97 (it took me 2 hours to find that problem :( )
+	inject_descrip.IAT[0] = g_pPETool->torva(newimport_offset + newdescrip_offset + sizeof(IMPORT_DESCRIPTOR) * 2 + 0x10 + dll_name_size + 1);
+	inject_descrip.Hit = 0;
+
+	memcpy(pFBuffer + newimport_offset + newdescrip_offset, &descriptor, sizeof(IMPORT_DESCRIPTOR));
+	memcpy(pFBuffer + newimport_offset + newdescrip_offset + sizeof(IMPORT_DESCRIPTOR) * 2, &inject_descrip, 0x10); // IAT INT
+	memcpy(pFBuffer + newimport_offset + newdescrip_offset + sizeof(IMPORT_DESCRIPTOR) * 2 + 0x10, dll_name, dll_name_size);// dll name
+	memcpy(pFBuffer + newimport_offset + newdescrip_offset + sizeof(IMPORT_DESCRIPTOR) * 2 + 0x10 + dll_name_size + 1 + 0x02, function_name, fn_name_size);// function name
+
+	return newdescrip_offset;
+}
+
 int PETool_free(PETool* pPetool) {
 	free(pPetool->pHeader->pBuffer);
 	free(pPetool->pHeader->pOptheader);
@@ -296,25 +372,7 @@ unsigned int getThunkSize(unsigned int thunk_offset) {
 		}
 		wecx++;
 	}
-	return wecx;
-}
 
-unsigned int getImportTableSize() {
-	Header* pHeader = g_pPETool->pHeader;
-	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
-	unsigned int wecx = 0;
-	IMPORT_DESCRIPTOR import_descrip;
-	unsigned int descrip_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Import.VirtualAddress);
-
-	while (true) {
-		memcpy(&import_descrip, ((IMPORT_DESCRIPTOR*)(pFBuffer + descrip_offset) + wecx), sizeof(IMPORT_DESCRIPTOR));
-		if (import_descrip.Name == 0) {
-			break;
-		}
-		else {
-		}
-		wecx++;
-	}
 	return wecx;
 }
 
@@ -325,23 +383,21 @@ bool isImportByName(unsigned int data) {
 IMPORT_FUNCTIONS* getImportFunctionNames() {
 	Header* pHeader = g_pPETool->pHeader;
 	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
-
-	unsigned int descrip_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Import.VirtualAddress);
-	unsigned int wecx = 0;
-	unsigned int wedx = 0;
-	unsigned int thunk_count = 0;
-	unsigned int import_table_count = 0;
-	unsigned int sum_total = 0;
-	unsigned int str_length = 0;
-	unsigned int thunk_offset;
-	unsigned int fnname_offset;
-	char* pName;
 	IMPORT_DESCRIPTOR import_descrip;
 	IMPORT_FUNCTION_NAME* pImportFunctionNames;
 
-	import_table_count = getImportTableSize();
+	unsigned int descrip_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.Import.VirtualAddress);
+	unsigned int thunk_count;
+	unsigned int thunk_offset;
+	unsigned int fnname_offset;
+	unsigned int import_table_count = import_table_count = getImportTableSize();
+	char* pName;
 
 	IMPORT_FUNCTIONS* pImportFunction = (IMPORT_FUNCTIONS*)calloc(sizeof(IMPORT_FUNCTIONS) * (import_table_count + 1), 1);
+
+	unsigned int wecx = 0;
+	unsigned int wedx = 0;
+	unsigned int str_length;
 	while (import_table_count > 0) {
 		memcpy(&import_descrip, ((IMPORT_DESCRIPTOR*)(pFBuffer + descrip_offset) + wecx), sizeof(IMPORT_DESCRIPTOR));
 		thunk_offset = g_pPETool->tofoa(import_descrip.OriginalFirstThunk);
@@ -376,6 +432,36 @@ IMPORT_FUNCTIONS* getImportFunctionNames() {
 	return pImportFunction;
 }
 
+struct BOUND_TABLE_ORIGIN {
+	DWORD TimeDataStamp;
+	WORD OffsetModuleName;
+	WORD NumberOfModuleForwarderRefs;
+};
+
+BOUND_TABLE* getBoundTableInfo() {
+	Header* pHeader = g_pPETool->pHeader;
+	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
+
+	unsigned int boundtable_offset = g_pPETool->tofoa(pHeader->pOptheader->DataDirArray.BoundImport.VirtualAddress);
+	if (boundtable_offset == 0) {
+		return NULL;
+	}
+
+	BOUND_TABLE_ORIGIN main_bound;
+	BOUND_TABLE* pBoundTable;
+	memcpy(&main_bound, pFBuffer + boundtable_offset, sizeof(BOUND_TABLE_ORIGIN));
+
+	pBoundTable = (BOUND_TABLE*)malloc(main_bound.NumberOfModuleForwarderRefs + 1);
+	memcpy(pBoundTable, pFBuffer + boundtable_offset, sizeof(BOUND_TABLE) * (main_bound.NumberOfModuleForwarderRefs + 1));
+
+	for (int fecx = 1; fecx < main_bound.NumberOfModuleForwarderRefs; fecx++) {
+		(pBoundTable + fecx)->pName = (char*)g_pPETool->tofoa((unsigned int)(pBoundTable + fecx)->pName + (unsigned int)pBoundTable->pName);
+	}
+	pBoundTable->pName = (char*)g_pPETool->tofoa((unsigned int)pBoundTable->pName);
+
+	return pBoundTable;
+}
+
 //
 // File function declare
 //
@@ -396,10 +482,6 @@ FBuffer* fcreate() {
 	return pBuffer;
 }
 
-int fwrite(unsigned int offset, unsigned int size) {
-	return 0;
-}
-
 // this function hidden from struct
 int shiftnew() {
 	Header* pHeader = g_pPETool->pHeader;
@@ -418,7 +500,7 @@ int shiftnew() {
 }
 
 // return 0: success; -1 faile
-int newsection(const char* section_name, char* bcode, unsigned int bcode_size, unsigned int characteristics) {
+int newsection(const char* section_name, unsigned int bcode_size, unsigned int characteristics) {
 	// Calculate if have enough size.
 	Header* pHeader = g_pPETool->pHeader;
 
@@ -459,7 +541,7 @@ int newsection(const char* section_name, char* bcode, unsigned int bcode_size, u
 
 	FBuffer* pFBuffer = g_pPETool->file.pBuffer;
 	FBuffer* newpFBuffer = (FBuffer*)calloc(sheader.PointerToRawData + g_pPETool->file.alignmentcalc(bcode_size) , 1);
-	memcpy(newpFBuffer + sheader.PointerToRawData, bcode, bcode_size); // append injected code
+	memset(newpFBuffer + sheader.PointerToRawData, 0, bcode_size); // append injected code
 	memcpy(newpFBuffer, pFBuffer, pHeader->file_size); // original to new
 	memcpy(newpFBuffer, pHBuffer, pHeader->SizeOfHeaders); // 
 	memcpy(newpFBuffer + pHeader->sectionTables_offset + SECTION_SIZE * pHeader->NumberOfSection, &sheader, SECTION_SIZE);
@@ -475,20 +557,28 @@ int newsection(const char* section_name, char* bcode, unsigned int bcode_size, u
 	}
 	g_pPETool->image.pBuffer = pIBuffer;
 
-	return 0;
+	return sheader.PointerToRawData;
 }
 
-int inject(const char* section_name, char* bcode) {
+int fmodify(unsigned int offset, unsigned int count, unsigned char* data) {
+	FBuffer* pFbuffer = g_pPETool->file.pBuffer;
+	memcpy(pFbuffer + offset, data, count);
 
-	return 0;
+	return count;
 }
 
-int fexport(FBuffer* pBuffer, char* filename, unsigned int size, unsigned int flags) {
+// TODO
+//int inject(const char* section_name, char* bcode) {
+//
+//	return 0;
+//}
+
+int fexport(char* filename, unsigned int flags) {
 	FILE* fp;
 
 	if (flags) {
 		fp = fopen(filename, "wb");
-		fwrite(pBuffer, size, 1, fp);
+		fwrite(g_pPETool->file.pBuffer, g_pPETool->pHeader->file_size, 1, fp);
 		fclose(fp);
 
 		return 0;
@@ -500,7 +590,7 @@ int fexport(FBuffer* pBuffer, char* filename, unsigned int size, unsigned int fl
 		return -1;
 	}
 	fp = fopen(filename, "wb");
-	fwrite(pBuffer, size, 1, fp);
+	fwrite(g_pPETool->file.pBuffer, g_pPETool->pHeader->file_size, 1, fp);
 	fclose(fp);
 
 	return 0;
@@ -637,6 +727,7 @@ Header* Header_new() {
 	pHeader->getExportFunctions = getExportFunctions;
 	pHeader->getRelocation = getRelocation;
 	pHeader->getImportFunctionNames = getImportFunctionNames;
+	pHeader->getBoundTableInfo = getBoundTableInfo;
 
 	return pHeader;
 }
@@ -648,9 +739,9 @@ FileObj File_new() {
 	file.create = fcreate;
 	file.pBuffer = file.create();
 	file.expand = icreate;
-	file.write = fwrite;
+	file.modify = fmodify;
 	file.newsection = newsection;
-	file.inject = inject;
+	//file.inject = inject;
 	file.alignmentcalc = falignmentcalc;
 	file.expandsection = expandsection;
 
@@ -687,6 +778,7 @@ PETool* PETool_new(char* filename) {
 	g_pPETool->torva = torva;
 	g_pPETool->fexport = fexport;
 	g_pPETool->pefree = PETool_free;
+	g_pPETool->dllInjection = dllInjection;
 
 	return g_pPETool;
 }
